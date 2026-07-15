@@ -503,16 +503,25 @@ document.getElementById('summaryCloseBtn').addEventListener('click', () => summa
 document.getElementById('lineShareBtn').addEventListener('click', () => {
   // ทำทุกอย่างแบบ sync ล้วน (ไม่มี await/alert คั่นกลาง) เพื่อไม่ให้เบราว์เซอร์ตัดสิทธิ์ที่มาจากการคลิกของผู้ใช้
   // หน้านี้รันบน GitHub Pages โดยตรง (ไม่มี iframe ครอบเหมือนตอนอยู่ใน Apps Script) จึงควรแนบไฟล์ได้ปกติบนมือถือ
+  let diagReason = '';
   if(lastLocalImages.length){
     try{
       const files = lastLocalImages.map((du, i) => dataUrlToFile(du, `photo${i + 1}.jpg`));
-      if(navigator.canShare && navigator.canShare({ files: files })){
+      if(!navigator.share){
+        diagReason = 'ไม่มี navigator.share';
+      } else if(!navigator.canShare){
+        diagReason = 'ไม่มี navigator.canShare';
+      } else if(!navigator.canShare({ files: files })){
+        diagReason = 'canShare({files}) = false';
+      } else {
         navigator.share({ files: files, text: lastSummaryText.split('\n\nรูปภาพ:')[0] }).catch(()=>{});
         return;
       }
     }catch(shareErr){
-      // ไปใช้วิธีสำรองข้างล่างแทน
+      diagReason = 'error: ' + shareErr.message;
     }
+  } else {
+    diagReason = 'ไม่มีรูปใน lastLocalImages';
   }
   // สำรอง (เผื่ออุปกรณ์/เบราว์เซอร์ไม่รองรับการแชร์ไฟล์ เช่น เปิดจากคอมพิวเตอร์):
   // ดาวน์โหลดรูปลงเครื่องแทน แล้วเปิด LINE ให้ผู้ใช้แนบรูปเองจากคลังภาพ
@@ -529,7 +538,7 @@ document.getElementById('lineShareBtn').addEventListener('click', () => {
     a.remove();
   });
   if(lastLocalImages.length){
-    showMsg('ดาวน์โหลดรูป ' + lastLocalImages.length + ' รูปลงเครื่องแล้ว กรุณาแนบรูปจากคลังภาพใน LINE เองครับ', true);
+    showMsg('ดาวน์โหลดรูป ' + lastLocalImages.length + ' รูปลงเครื่องแล้ว กรุณาแนบรูปจากคลังภาพใน LINE เองครับ [เหตุผล: ' + diagReason + ']', true);
   }
 });
 
