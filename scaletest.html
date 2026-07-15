@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="th">
 <head>
@@ -645,7 +646,7 @@ pointList.innerHTML = TEST_POINTS.map((name, idx) => `
 `).join('');
 
 TEST_POINTS.forEach((name, idx) => {
-  document.getElementById(`imgwrap_${idx}`).innerHTML = shotSlotHTML(`pt_${idx}`);
+  document.getElementById(`imgwrap_${idx}`).innerHTML = shotSlotHTML(`pt_${idx}_0`);
   setupCaptureSlots(`pt_${idx}`, 1);
   document.getElementById(`weight_${idx}`).addEventListener('input', () => updateDiff(idx));
 });
