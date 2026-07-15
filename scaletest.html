@@ -668,7 +668,11 @@ const testDateEl = document.getElementById('testDate');
 const dateStatusEl = document.getElementById('dateStatus');
 testDateEl.valueAsDate = new Date();
 
+// เก็บ URL รูปเดิมที่โหลดมาจากวันที่เลือกไว้ (สำหรับจุดที่ไม่ได้ถ่ายรูปใหม่ตอนแก้ไข จะได้ไม่เสียรูปเดิมไปตอนบันทึกซ้ำ)
+let existingImageUrls = new Array(TEST_POINTS.length).fill('');
+
 function resetAllPoints(){
+  existingImageUrls = new Array(TEST_POINTS.length).fill('');
   TEST_POINTS.forEach((name, idx) => {
     document.getElementById(`weight_${idx}`).value = '';
     updateDiff(idx);
@@ -704,7 +708,7 @@ async function loadDataForDate(){
     if(json && json.found){
       dateStatusEl.style.background = '#DCE7FE';
       dateStatusEl.style.color = 'var(--brass-dark)';
-      dateStatusEl.textContent = `พบข้อมูลของวันที่ ${dateVal} แล้ว (${json.items.length} จุด) — กำลังแก้ไข/เพิ่มเติมข้อมูล`;
+      dateStatusEl.textContent = `พบข้อมูลของวันที่ ${dateVal} แล้ว (${json.items.length} จุด) — กำลังแก้ไข/เพิ่มเติมข้อมูล (ถ่ายรูปใหม่เฉพาะจุดที่ต้องการเปลี่ยน จุดที่ไม่แตะจะเก็บรูปเดิมไว้)`;
 
       json.items.forEach(item => {
         const idx = TEST_POINTS.indexOf(item.pointName);
@@ -712,6 +716,7 @@ async function loadDataForDate(){
         document.getElementById(`weight_${idx}`).value = item.weight;
         updateDiff(idx);
         if(item.imgUrl){
+          existingImageUrls[idx] = item.imgUrl;
           const existingImg = document.getElementById(`existingimg_${idx}`);
           existingImg.src = item.imgUrl;
           existingImg.style.display = 'block';
@@ -749,8 +754,9 @@ saveBtn.addEventListener('click', async () => {
     if(weightVal === ''){ missingCount++; return; }
     const w = parseFloat(weightVal) || 0;
     const diff = w - STANDARD_WEIGHT;
-    const img = (captureImages[`pt_${idx}`] || [])[0] || '';
-    if(img) localImgsForShare.push(img);
+    const newImg = (captureImages[`pt_${idx}`] || [])[0] || '';
+    const img = newImg || existingImageUrls[idx] || ''; // ไม่ได้ถ่ายใหม่ → ใช้รูปเดิมที่เคยบันทึกไว้ต่อ
+    if(newImg) localImgsForShare.push(newImg); // แชร์ไป LINE เฉพาะรูปที่เพิ่งถ่ายใหม่ในเซสชันนี้เท่านั้น
     items.push({ pointName: name, weight: w, diff: diff, img: img });
   });
 
@@ -784,7 +790,7 @@ saveBtn.addEventListener('click', async () => {
         ['ผู้ทำการทดสอบ', testerName || '(ยังไม่ระบุ)']
       ].concat(items.map(it => [it.pointName, it.weight.toFixed(2) + ' Kg. (' + (it.diff >= 0 ? '+' : '') + it.diff.toFixed(2) + ')']));
 
-      showSummary('บันทึกผลทดสอบตราชั่งสำเร็จ', summaryRowsData, [], localImgsForShare.slice(0, 9));
+      showSummary('บันทึกผลทดสอบตราชั่งสำเร็จ', summaryRowsData, json.images, localImgsForShare.slice(0, 9));
     } else {
       showMsg('บันทึกไม่สำเร็จ: ' + (json && json.message ? json.message : 'ไม่ทราบสาเหตุ'), false);
     }
