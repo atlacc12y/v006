@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="th">
 <head>
@@ -363,13 +364,9 @@
     <h3 id="summaryTitle">สรุปรายการ</h3>
     <div id="summaryRows"></div>
     <div class="modal-imgs" id="summaryImgs"></div>
-    <button type="button" class="line-btn" id="lineShareImgBtn">
+    <button type="button" class="line-btn" id="lineShareBtn">
       <svg viewBox="0 0 24 24" width="18" height="18" fill="#fff"><path d="M12 2C6.48 2 2 5.94 2 10.75c0 3.13 2.09 5.87 5.24 7.4-.23.85-.83 3.06-.96 3.53-.16.6.22.59.46.43.19-.13 3-2.04 4.22-2.87.34.05.68.07 1.04.07 5.52 0 10-3.94 10-8.75S17.52 2 12 2z"/></svg>
-      1) แชร์รูปภาพไปที่ LINE
-    </button>
-    <button type="button" class="line-btn" id="copySummaryBtn" style="background:#1D4ED8;">
-      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-      2) คัดลอกข้อความสรุป (แล้วไปวางใน LINE เอง)
+      แชร์ไปที่ LINE (รูป+ข้อความ)
     </button>
     <button type="button" class="modal-close-btn" id="summaryCloseBtn">ปิด</button>
   </div>
@@ -622,7 +619,16 @@ function showSummary(title, rows, images, localImages){
 document.getElementById('summaryCloseBtn').addEventListener('click', () => summaryModal.classList.remove('show'));
 // ปุ่ม 1: แชร์รูปภาพไปที่ LINE (แยกต่างหาก ไม่พ่วงกับการเปิด LINE ด้วยข้อความ
 // เพราะถ้าทำพร้อมกัน การสลับไปเปิดแอป LINE จะทำให้โค้ดส่วนแชร์รูปไม่ได้ทำงานต่อ)
-document.getElementById('lineShareImgBtn').addEventListener('click', () => {
+// ปุ่มเดียว: คัดลอกข้อความสรุปเข้าคลิปบอร์ดแบบเงียบๆ (ไม่ await เพื่อไม่เสียสิทธิ์ user-gesture)
+// พร้อมกับเปิดหน้าต่างแชร์รูปภาพทันทีในคลิกเดียวกัน — เลือก LINE แล้ว "วาง" ข้อความที่คัดลอกไว้ต่อได้เลย
+document.getElementById('lineShareBtn').addEventListener('click', () => {
+  const textOnly = lastSummaryText.split('\n\nรูปภาพ:')[0];
+
+  // คัดลอกข้อความไว้เบื้องหลัง (ไม่รอผล ไม่ await) เพื่อให้ยังมีสิทธิ์เรียก navigator.share ต่อได้ทันที
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(textOnly).catch(()=>{});
+  }
+
   let diagReason = '';
   if(lastLocalImages.length){
     try{
@@ -635,13 +641,14 @@ document.getElementById('lineShareImgBtn').addEventListener('click', () => {
         diagReason = 'canShare({files}) = false';
       } else {
         navigator.share({ files: files }).catch(()=>{});
+        showMsg('คัดลอกข้อความสรุปไว้แล้ว ✓ หลังแนบรูปใน LINE เสร็จ กด Paste วางข้อความต่อได้เลยครับ', true);
         return;
       }
     }catch(shareErr){
       diagReason = 'error: ' + shareErr.message;
     }
   } else {
-    showMsg('ไม่มีรูปให้แชร์ในรายการนี้', false);
+    showMsg('คัดลอกข้อความสรุปแล้ว ✓ ไปวาง (Paste) ใน LINE ได้เลยครับ (รายการนี้ไม่มีรูป)', true);
     return;
   }
   // สำรอง: ดาวน์โหลดรูปถ่ายจริงลงเครื่อง (กรณี Web Share แนบไฟล์ไม่ได้)
@@ -653,22 +660,7 @@ document.getElementById('lineShareImgBtn').addEventListener('click', () => {
     a.click();
     a.remove();
   });
-  showMsg('ดาวน์โหลดรูป ' + lastLocalImages.length + ' รูปลงเครื่องแล้ว กรุณาแนบรูปจากคลังภาพใน LINE เองครับ [เหตุผล: ' + diagReason + ']', true);
-});
-
-// ปุ่ม 2: คัดลอกข้อความสรุป — ให้ผู้ใช้ไปวาง (Paste) เองในแชท LINE
-// (เชื่อถือได้ 100% ไม่มีปัญหาเรื่องแอปสลับหน้าจอเหมือนการเปิดลิงก์อัตโนมัติ)
-document.getElementById('copySummaryBtn').addEventListener('click', async () => {
-  const textOnly = lastSummaryText.split('\n\nรูปภาพ:')[0];
-  try{
-    await navigator.clipboard.writeText(textOnly);
-    showMsg('คัดลอกข้อความสรุปแล้ว ✓ ไปวาง (Paste) ในแชท LINE ได้เลยครับ', true);
-  }catch(err){
-    // สำรองกรณีคัดลอกอัตโนมัติไม่ได้: เปิด LINE พร้อมข้อความให้แทน
-    const topNavHelper = document.getElementById('topNavHelper');
-    topNavHelper.href = 'https://line.me/R/msg/text/?' + encodeURIComponent(textOnly);
-    topNavHelper.click();
-  }
+  showMsg('คัดลอกข้อความสรุปไว้แล้ว + ดาวน์โหลดรูป ' + lastLocalImages.length + ' รูปลงเครื่อง กรุณาแนบรูป+วางข้อความใน LINE เองครับ [เหตุผล: ' + diagReason + ']', true);
 });
 
 // ---------- submit ----------
