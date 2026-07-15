@@ -568,6 +568,8 @@ const summaryRows = document.getElementById('summaryRows');
 const summaryImgs = document.getElementById('summaryImgs');
 let lastSummaryText = '';
 let lastLocalImages = [];
+let lastSummaryTitle = '';
+let lastSummaryRowsData = [];
 
 function dataUrlToFile(dataUrl, filename){
   const parts = dataUrl.split(',');
@@ -579,6 +581,49 @@ function dataUrlToFile(dataUrl, filename){
   return new File([bytes], filename, { type: mime });
 }
 
+// วาดข้อความสรุปเป็น "รูปภาพ" หนึ่งใบ (ใช้ toDataURL แบบ sync ไม่ใช่ toBlob แบบ async
+// เพื่อไม่ให้เสียสิทธิ์ user-gesture ก่อนเรียก navigator.share) แล้วส่งไปพร้อมรูปถ่ายจริง
+// เพื่อให้ LINE แสดงข้อความสรุปแน่นอน 100% (บางแอปไม่แสดง text ที่แนบมากับ navigator.share)
+function buildSummaryImageDataUrl(title, rows){
+  const width = 800;
+  const rowHeight = 46;
+  const headerHeight = 92;
+  const padding = 32;
+  const height = headerHeight + rows.length * rowHeight + padding;
+  const canvas = document.createElement('canvas');
+  canvas.width = width; canvas.height = height;
+  const ctx = canvas.getContext('2d');
+
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, width, height);
+
+  ctx.fillStyle = '#111827';
+  ctx.fillRect(0, 0, width, headerHeight);
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 28px Sarabun, Tahoma, sans-serif';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(title, padding, headerHeight / 2);
+
+  let y = headerHeight;
+  rows.forEach((r, i) => {
+    if(i % 2 === 0){
+      ctx.fillStyle = '#F8F9FB';
+      ctx.fillRect(0, y, width, rowHeight);
+    }
+    ctx.fillStyle = '#64748B';
+    ctx.font = '19px Sarabun, Tahoma, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(String(r[0]), padding, y + rowHeight / 2);
+    ctx.fillStyle = '#1F2937';
+    ctx.font = 'bold 19px Sarabun, Tahoma, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText(String(r[1]), width - padding, y + rowHeight / 2);
+    y += rowHeight;
+  });
+
+  return canvas.toDataURL('image/png');
+}
+
 function showSummary(title, rows, images, localImages){
   summaryTitle.textContent = title;
   summaryRows.innerHTML = rows.map(r => `<div class="modal-row"><span>${r[0]}</span><span>${r[1]}</span></div>`).join('');
@@ -586,34 +631,44 @@ function showSummary(title, rows, images, localImages){
   lastSummaryText = title + '\n' + rows.map(r => `${r[0]}: ${r[1]}`).join('\n') +
     (images && images.length ? '\n\nรูปภาพ:\n' + images.join('\n') : '');
   lastLocalImages = localImages || [];
+  lastSummaryTitle = title;
+  lastSummaryRowsData = rows;
   summaryModal.classList.add('show');
 }
 document.getElementById('summaryCloseBtn').addEventListener('click', () => summaryModal.classList.remove('show'));
 document.getElementById('lineShareBtn').addEventListener('click', () => {
   // ทำทุกอย่างแบบ sync ล้วน (ไม่มี await/alert คั่นกลาง) เพื่อไม่ให้เบราว์เซอร์ตัดสิทธิ์ที่มาจากการคลิกของผู้ใช้
+  // สร้างรูปสรุปข้อความ + รวมกับรูปถ่ายจริง ส่งไปเป็นชุดไฟล์เดียวกัน (ข้อความ+รูปแน่นอน)
+  const summaryImgDataUrl = buildSummaryImageDataUrl(lastSummaryTitle, lastSummaryRowsData);
+  const summaryImgFile = dataUrlToFile(summaryImgDataUrl, 'summary.png');
   let diagReason = '';
-  if(lastLocalImages.length){
-    try{
-      const files = lastLocalImages.map((du, i) => dataUrlToFile(du, `photo${i + 1}.jpg`));
-      if(!navigator.share){
-        diagReason = 'ไม่มี navigator.share';
-      } else if(!navigator.canShare){
-        diagReason = 'ไม่มี navigator.canShare';
-      } else if(!navigator.canShare({ files: files })){
-        diagReason = 'canShare({files}) = false';
-      } else {
-        navigator.share({ files: files, text: lastSummaryText.split('\n\nรูปภาพ:')[0] }).catch(()=>{});
-        return;
-      }
-    }catch(shareErr){
-      diagReason = 'error: ' + shareErr.message;
+  try{
+    // รูปสรุปข้อความอยู่รูปแรกเสมอ ตามด้วยรูปถ่ายจริง (ถ้ามี) — ส่งเป็นชุดไฟล์เดียวกัน
+    const files = [summaryImgFile, ...lastLocalImages.map((du, i) => dataUrlToFile(du, `photo${i + 1}.jpg`))];
+    if(!navigator.share){
+      diagReason = 'ไม่มี navigator.share';
+    } else if(!navigator.canShare){
+      diagReason = 'ไม่มี navigator.canShare';
+    } else if(!navigator.canShare({ files: files })){
+      diagReason = 'canShare({files}) = false';
+    } else {
+      navigator.share({ files: files }).catch(()=>{});
+      return;
     }
-  } else {
-    diagReason = 'ไม่มีรูปใน lastLocalImages';
+  }catch(shareErr){
+    diagReason = 'error: ' + shareErr.message;
   }
   const topNavHelper = document.getElementById('topNavHelper');
   topNavHelper.href = 'https://line.me/R/msg/text/?' + encodeURIComponent(lastSummaryText.split('\n\nรูปภาพ:')[0]);
   topNavHelper.click();
+
+  // ดาวน์โหลดรูปสรุปข้อความ + รูปถ่ายจริงทั้งหมดลงเครื่อง (กรณี Web Share แนบไฟล์ไม่ได้)
+  const aSummary = document.createElement('a');
+  aSummary.href = summaryImgDataUrl;
+  aSummary.download = 'summary.png';
+  document.body.appendChild(aSummary);
+  aSummary.click();
+  aSummary.remove();
 
   lastLocalImages.forEach((du, i) => {
     const a = document.createElement('a');
@@ -623,9 +678,7 @@ document.getElementById('lineShareBtn').addEventListener('click', () => {
     a.click();
     a.remove();
   });
-  if(lastLocalImages.length){
-    showMsg('ดาวน์โหลดรูป ' + lastLocalImages.length + ' รูปลงเครื่องแล้ว กรุณาแนบรูปจากคลังภาพใน LINE เองครับ [เหตุผล: ' + diagReason + ']', true);
-  }
+  showMsg('ดาวน์โหลดรูปสรุป' + (lastLocalImages.length ? ' + รูปถ่าย ' + lastLocalImages.length + ' รูป' : '') + 'ลงเครื่องแล้ว กรุณาแนบรูปจากคลังภาพใน LINE เองครับ [เหตุผล: ' + diagReason + ']', true);
 });
 
 // ---------- submit ----------
