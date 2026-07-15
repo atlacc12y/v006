@@ -426,7 +426,9 @@ function resizeImage(file, maxDim, quality){
         else if (height > maxDim){ width *= maxDim/height; height = maxDim; }
         const canvas = document.createElement('canvas');
         canvas.width = width; canvas.height = height;
-        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        stampDateTime(ctx, width, height);
         resolve(canvas.toDataURL('image/jpeg', quality));
       };
       img.onerror = reject;
@@ -435,6 +437,30 @@ function resizeImage(file, maxDim, quality){
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
+}
+
+// ประทับวันที่-เวลาปัจจุบันที่มุมล่างขวาของรูป (พื้นหลังทึบให้อ่านง่ายบนพื้นสีอ่อน)
+function stampDateTime(ctx, width, height){
+  const now = new Date();
+  const pad2 = n => String(n).padStart(2, '0');
+  const text = `${pad2(now.getDate())}/${pad2(now.getMonth()+1)}/${now.getFullYear()} ${pad2(now.getHours())}:${pad2(now.getMinutes())}:${pad2(now.getSeconds())}`;
+
+  const fontSize = Math.max(14, Math.round(width * 0.028));
+  ctx.font = `600 ${fontSize}px 'IBM Plex Mono', 'Courier New', monospace`;
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'bottom';
+
+  const paddingX = fontSize * 0.6;
+  const paddingY = fontSize * 0.5;
+  const textWidth = ctx.measureText(text).width;
+  const boxW = textWidth + paddingX * 2;
+  const boxH = fontSize + paddingY * 1.6;
+
+  ctx.fillStyle = 'rgba(0,0,0,0.55)';
+  ctx.fillRect(width - boxW - 8, height - boxH - 8, boxW, boxH);
+
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText(text, width - paddingX - 8, height - paddingY - 8);
 }
 
 function setSlotFilled(i, key, src){
