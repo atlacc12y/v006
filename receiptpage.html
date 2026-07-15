@@ -358,7 +358,7 @@
 </main>
 
 <div class="modal-overlay" id="summaryModal">
-  <a id="topNavHelper" target="_top" style="display:none;"></a>
+  <a id="topNavHelper" target="_blank" rel="noopener" style="display:none;"></a>
   <div class="modal-box">
     <h3 id="summaryTitle">สรุปรายการ</h3>
     <div id="summaryRows"></div>
@@ -618,38 +618,36 @@ function showSummary(title, rows, images, localImages){
 document.getElementById('summaryCloseBtn').addEventListener('click', () => summaryModal.classList.remove('show'));
 document.getElementById('lineShareBtn').addEventListener('click', () => {
   // ทำทุกอย่างแบบ sync ล้วน (ไม่มี await/alert คั่นกลาง) เพื่อไม่ให้เบราว์เซอร์ตัดสิทธิ์ที่มาจากการคลิกของผู้ใช้
-  // สร้างรูปสรุปข้อความ + รวมกับรูปถ่ายจริง ส่งไปเป็นชุดไฟล์เดียวกัน (ข้อความ+รูปแน่นอน)
-  const summaryImgDataUrl = buildSummaryImageDataUrl(lastSummaryTitle, lastSummaryRowsData);
-  const summaryImgFile = dataUrlToFile(summaryImgDataUrl, 'summary.png');
-  let diagReason = '';
-  try{
-    // รูปสรุปข้อความอยู่รูปแรกเสมอ ตามด้วยรูปถ่ายจริง (ถ้ามี) — ส่งเป็นชุดไฟล์เดียวกัน
-    const files = [summaryImgFile, ...lastLocalImages.map((du, i) => dataUrlToFile(du, `photo${i + 1}.jpg`))];
-    if(!navigator.share){
-      diagReason = 'ไม่มี navigator.share';
-    } else if(!navigator.canShare){
-      diagReason = 'ไม่มี navigator.canShare';
-    } else if(!navigator.canShare({ files: files })){
-      diagReason = 'canShare({files}) = false';
-    } else {
-      navigator.share({ files: files }).catch(()=>{});
-      return;
-    }
-  }catch(shareErr){
-    diagReason = 'error: ' + shareErr.message;
-  }
+  const textOnly = lastSummaryText.split('\n\nรูปภาพ:')[0];
+
+  // 1) เปิด LINE พร้อมข้อความสรุปจริง (ตัวอักษรจริง ไม่ใช่รูปภาพของข้อความ) — เปิดแท็บใหม่ไม่รบกวนหน้าปัจจุบัน
   const topNavHelper = document.getElementById('topNavHelper');
-  topNavHelper.href = 'https://line.me/R/msg/text/?' + encodeURIComponent(lastSummaryText.split('\n\nรูปภาพ:')[0]);
+  topNavHelper.href = 'https://line.me/R/msg/text/?' + encodeURIComponent(textOnly);
   topNavHelper.click();
 
-  // ดาวน์โหลดรูปสรุปข้อความ + รูปถ่ายจริงทั้งหมดลงเครื่อง (กรณี Web Share แนบไฟล์ไม่ได้)
-  const aSummary = document.createElement('a');
-  aSummary.href = summaryImgDataUrl;
-  aSummary.download = 'summary.png';
-  document.body.appendChild(aSummary);
-  aSummary.click();
-  aSummary.remove();
+  // 2) แชร์รูปถ่ายจริงแยกต่างหาก (ถ้ามี) ผ่าน Web Share ของเครื่อง
+  let diagReason = '';
+  if(lastLocalImages.length){
+    try{
+      const files = lastLocalImages.map((du, i) => dataUrlToFile(du, `photo${i + 1}.jpg`));
+      if(!navigator.share){
+        diagReason = 'ไม่มี navigator.share';
+      } else if(!navigator.canShare){
+        diagReason = 'ไม่มี navigator.canShare';
+      } else if(!navigator.canShare({ files: files })){
+        diagReason = 'canShare({files}) = false';
+      } else {
+        navigator.share({ files: files }).catch(()=>{});
+        return;
+      }
+    }catch(shareErr){
+      diagReason = 'error: ' + shareErr.message;
+    }
+  } else {
+    return; // ไม่มีรูป แค่เปิด LINE ข้อความอย่างเดียวก็พอ
+  }
 
+  // สำรอง: ดาวน์โหลดรูปถ่ายจริงลงเครื่อง (กรณี Web Share แนบไฟล์ไม่ได้)
   lastLocalImages.forEach((du, i) => {
     const a = document.createElement('a');
     a.href = du;
@@ -658,7 +656,7 @@ document.getElementById('lineShareBtn').addEventListener('click', () => {
     a.click();
     a.remove();
   });
-  showMsg('ดาวน์โหลดรูปสรุป' + (lastLocalImages.length ? ' + รูปถ่าย ' + lastLocalImages.length + ' รูป' : '') + 'ลงเครื่องแล้ว กรุณาแนบรูปจากคลังภาพใน LINE เองครับ [เหตุผล: ' + diagReason + ']', true);
+  showMsg('เปิด LINE พร้อมข้อความสรุปแล้ว และดาวน์โหลดรูป ' + lastLocalImages.length + ' รูปลงเครื่อง กรุณาแนบรูปจากคลังภาพใน LINE เองครับ [เหตุผล: ' + diagReason + ']', true);
 });
 
 // ---------- submit ----------
