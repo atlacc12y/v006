@@ -348,8 +348,12 @@
   <div id="msg" class="msg"></div>
 
   <div class="card">
-    <h2>สรุปวันนี้ <button type="button" class="refresh" id="refreshBtn">รีเฟรช ↻</button></h2>
-    <p class="sub-desc" id="snapshotDateLabel">กำลังโหลดข้อมูล…</p>
+    <h2>เลือกดูข้อมูล <button type="button" class="refresh" id="refreshBtn">รีเฟรช ↻</button></h2>
+    <div class="field">
+      <label for="viewDate">วันที่ต้องการดู</label>
+      <input type="date" id="viewDate">
+    </div>
+    <p class="sub-desc" id="snapshotDateLabel" style="margin-top:8px;">กำลังโหลดข้อมูล…</p>
     <div class="kpi-grid" id="kpiGrid"></div>
   </div>
 
@@ -362,8 +366,17 @@
   </div>
 
   <div class="card">
+    <h2>จำนวนถังที่ผลิต แยกตามขนาด</h2>
+    <p class="sub-desc">ติดตามปริมาณการผลิตแยกตามประเภทถัง เพื่อดูสัดส่วนการผลิตได้ตลอดเวลา</p>
+    <div style="position:relative; height:220px;">
+      <canvas id="tankCountChart"></canvas>
+    </div>
+    <table class="dash-table" id="tankCountTable" style="margin-top:10px;"></table>
+  </div>
+
+  <div class="card">
     <h2>แยกตามกะ</h2>
-    <p class="sub-desc">น้ำแก๊สที่รับ / จำนวนถัง / Gain ของแต่ละกะ</p>
+    <p class="sub-desc" id="shiftTableNote">น้ำแก๊สที่รับ / จำนวนถัง / Gain ของแต่ละกะ</p>
     <div style="overflow-x:auto;">
       <table class="dash-table" id="shiftTable"></table>
     </div>
@@ -434,18 +447,44 @@ function fmtNum(n){
   return (isFinite(n) ? n : 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+let tankCountChartInstance = null;
+
+function todayStr(){
+  const d = new Date();
+  const pad2 = n => String(n).padStart(2, '0');
+  return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+}
+
 async function loadSnapshot(){
+  const viewDateEl = document.getElementById('viewDate');
+  const selectedDate = viewDateEl.value || todayStr();
+  const isToday = selectedDate === todayStr();
+
   document.getElementById('snapshotDateLabel').textContent = 'กำลังโหลดข้อมูล…';
   try{
-    const res = await fetch(GAS_URL + '?action=dashboardSnapshot');
+    const url = isToday
+      ? GAS_URL + '?action=dashboardSnapshot'
+      : GAS_URL + '?action=dashboardDay&date=' + encodeURIComponent(selectedDate);
+    const res = await fetch(url);
     const json = await res.json();
+
     if(!json || json.status !== 'ok'){
-      showMsg('โหลดข้อมูลสรุปไม่สำเร็จ: ' + (json && json.message ? json.message : 'ไม่ทราบสาเหตุ'), false);
+      showMsg('โหลดข้อมูลไม่สำเร็จ: ' + (json && json.message ? json.message : 'ไม่ทราบสาเหตุ'), false);
       document.getElementById('snapshotDateLabel').textContent = 'โหลดข้อมูลไม่สำเร็จ';
       return;
     }
+    if(!isToday && json.found === false){
+      document.getElementById('snapshotDateLabel').textContent = `ยังไม่มีข้อมูลที่บันทึกไว้ของวันที่ ${selectedDate} (ระบบบันทึกอัตโนมัติทุกคืน เริ่มนับตั้งแต่วันที่ตั้งค่าไว้เป็นต้นไป)`;
+      document.getElementById('kpiGrid').innerHTML = '';
+      document.getElementById('shiftTable').innerHTML = '';
+      document.getElementById('tankCountTable').innerHTML = '';
+      if(sizeChartInstance) sizeChartInstance.destroy();
+      if(tankCountChartInstance) tankCountChartInstance.destroy();
+      return;
+    }
 
-    document.getElementById('snapshotDateLabel').textContent = 'ข้อมูล ณ วันที่ ' + (json.dateLabel || '-');
+    document.getElementById('snapshotDateLabel').textContent =
+      (isToday ? 'ข้อมูลสด ณ วันที่ ' : 'ข้อมูลที่บันทึกไว้ของวันที่ ') + (json.dateLabel || selectedDate);
 
     const diff = json.lmsTotal.total - json.targetTotal.total;
     const kpis = [
@@ -481,27 +520,59 @@ async function loadSnapshot(){
       }
     });
 
-    // ตารางแยกตามกะ
-    const shiftRows = json.shiftsReceived.map((s, i) => {
-      const tankRow = json.shiftsTankCount[i];
-      const gainRow = json.shiftsGain[i];
-      return `<tr>
-        <td>${s.name}</td>
-        <td>${fmtNum(s.total)}</td>
-        <td>${fmtNum(tankRow.total).replace(/\.00$/, '')}</td>
-        <td>${fmtNum(gainRow.total)}</td>
-      </tr>`;
-    }).join('');
-    document.getElementById('shiftTable').innerHTML = `
-      <tr><th>กะ</th><th>รับน้ำแก๊ส (Kg.)</th><th>จำนวนถัง</th><th>Gain (Kg.)</th></tr>
-      ${shiftRows}
-      <tr>
-        <td>รวมทั้งหมด</td>
-        <td>${fmtNum(json.lmsTotal.total)}</td>
-        <td>${fmtNum(json.totalTanks.total).replace(/\.00$/, '')}</td>
-        <td>${fmtNum(json.gainTotal.total)}</td>
-      </tr>
+    // กราฟ+ตาราง จำนวนถังที่ผลิต แยกตามขนาด
+    const tankCountCtx = document.getElementById('tankCountChart').getContext('2d');
+    if(tankCountChartInstance) tankCountChartInstance.destroy();
+    tankCountChartInstance = new Chart(tankCountCtx, {
+      type: 'bar',
+      data: {
+        labels: json.tankSizes,
+        datasets: [{ label: 'จำนวนถัง', data: json.totalTanks.bySize, backgroundColor: '#2E9C4C' }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true } }
+      }
+    });
+    document.getElementById('tankCountTable').innerHTML = `
+      <tr><th>ขนาดถัง</th>${json.tankSizes.map(s => `<th>${s}</th>`).join('')}<th>รวม</th></tr>
+      <tr><td>จำนวนถัง (ใบ)</td>${json.totalTanks.bySize.map(v => `<td>${fmtNum(v).replace(/\.00$/, '')}</td>`).join('')}<td>${fmtNum(json.totalTanks.total).replace(/\.00$/, '')}</td></tr>
     `;
+
+    // ตารางแยกตามกะ (มีเฉพาะข้อมูลวันนี้ ข้อมูลย้อนหลังไม่มีรายละเอียดต่อกะ)
+    const shiftTableNote = document.getElementById('shiftTableNote');
+    if(json.shiftsReceived && json.shiftsReceived.length){
+      shiftTableNote.textContent = 'น้ำแก๊สที่รับ / จำนวนถัง / Gain ของแต่ละกะ';
+      const shiftRows = json.shiftsReceived.map((s, i) => {
+        const tankRow = json.shiftsTankCount[i];
+        const gainRow = json.shiftsGain[i];
+        return `<tr>
+          <td>${s.name}</td>
+          <td>${fmtNum(s.total)}</td>
+          <td>${fmtNum(tankRow.total).replace(/\.00$/, '')}</td>
+          <td>${fmtNum(gainRow.total)}</td>
+        </tr>`;
+      }).join('');
+      document.getElementById('shiftTable').innerHTML = `
+        <tr><th>กะ</th><th>รับน้ำแก๊ส (Kg.)</th><th>จำนวนถัง</th><th>Gain (Kg.)</th></tr>
+        ${shiftRows}
+        <tr>
+          <td>รวมทั้งหมด</td>
+          <td>${fmtNum(json.lmsTotal.total)}</td>
+          <td>${fmtNum(json.totalTanks.total).replace(/\.00$/, '')}</td>
+          <td>${fmtNum(json.gainTotal.total)}</td>
+        </tr>
+      `;
+    } else {
+      shiftTableNote.textContent = 'ข้อมูลย้อนหลังไม่มีรายละเอียดแยกตามกะ (มีเฉพาะยอดรวม) — ดูรายละเอียดต่อกะได้เฉพาะข้อมูลของวันนี้';
+      document.getElementById('shiftTable').innerHTML = `
+        <tr><th>รายการ</th><th>รวม (Kg. / ถัง)</th></tr>
+        <tr><td>เข้าระบบ LMS รวม</td><td>${fmtNum(json.lmsTotal.total)} Kg.</td></tr>
+        <tr><td>รวมถังทั้งหมด</td><td>${fmtNum(json.totalTanks.total).replace(/\.00$/, '')} ถัง</td></tr>
+        <tr><td>Gain น้ำแก๊สรวม</td><td>${fmtNum(json.gainTotal.total)} Kg.</td></tr>
+      `;
+    }
   }catch(err){
     showMsg('เชื่อมต่อไม่สำเร็จ กรุณาลองใหม่', false);
     document.getElementById('snapshotDateLabel').textContent = 'โหลดข้อมูลไม่สำเร็จ';
@@ -545,6 +616,8 @@ async function loadHistory(){
   }
 }
 
+document.getElementById('viewDate').valueAsDate = new Date();
+document.getElementById('viewDate').addEventListener('change', loadSnapshot);
 document.getElementById('refreshBtn').addEventListener('click', () => { loadSnapshot(); loadHistory(); });
 loadSnapshot();
 loadHistory();
