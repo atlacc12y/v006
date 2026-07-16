@@ -595,6 +595,7 @@ const summaryRows = document.getElementById('summaryRows');
 const summaryImgs = document.getElementById('summaryImgs');
 let lastSummaryText = '';
 let lastLocalImages = [];
+let lastRemoteImages = [];
 let lastSummaryTitle = '';
 let lastSummaryRowsData = [];
 
@@ -672,6 +673,7 @@ function showSummary(title, rows, images, localImages){
   lastSummaryText = title + '\n' + rows.map(r => `${r[0]}: ${r[1]}`).join('\n') +
     (images && images.length ? '\n\nรูปภาพ:\n' + images.join('\n') : '');
   lastLocalImages = localImages || [];
+  lastRemoteImages = images || [];
   lastSummaryTitle = title;
   lastSummaryRowsData = rows;
   summaryModal.classList.add('show');
@@ -681,42 +683,64 @@ document.getElementById('summaryCloseBtn').addEventListener('click', () => summa
 // เพราะถ้าทำพร้อมกัน การสลับไปเปิดแอป LINE จะทำให้โค้ดส่วนแชร์รูปไม่ได้ทำงานต่อ)
 // ปุ่มเดียว: คัดลอกข้อความสรุปเข้าคลิปบอร์ดแบบเงียบๆ (ไม่ await เพื่อไม่เสียสิทธิ์ user-gesture)
 // พร้อมกับเปิดหน้าต่างแชร์รูปภาพทันทีในคลิกเดียวกัน — เลือก LINE แล้ว "วาง" ข้อความที่คัดลอกไว้ต่อได้เลย
-document.getElementById('lineShareBtn').addEventListener('click', () => {
+async function shareToLine(){
   const textOnly = lastSummaryText.split('\n\nรูปภาพ:')[0];
 
-  // คัดลอกข้อความไว้เบื้องหลัง (ไม่รอผล ไม่ await) เพื่อให้ยังมีสิทธิ์เรียก navigator.share ต่อได้ทันที
+  // คัดลอกข้อความไว้เบื้องหลังเสมอ (ไม่ await) — ใช้ได้ทั้งกรณีมีรูปและไม่มีรูป
   if(navigator.clipboard && navigator.clipboard.writeText){
     navigator.clipboard.writeText(textOnly).catch(()=>{});
   }
 
+  let files = [];
   let diagReason = '';
-  if(lastLocalImages.length){
+
+  try{
+    if(lastLocalImages.length){
+      // รูปที่เพิ่งถ่ายใหม่ในเซสชันนี้ (base64) — แปลงเป็นไฟล์ได้ทันทีไม่ต้องรอเน็ต
+      files = lastLocalImages.map((du, i) => dataUrlToFile(du, `photo${i + 1}.jpg`));
+    } else if(lastRemoteImages.length){
+      // เปิดรายการเก่าที่โหลดมา รูปเป็นลิงก์ Drive ต้องดึงไฟล์จริงมาก่อนถึงจะแชร์เป็นรูปได้
+      files = await Promise.all(lastRemoteImages.map(async (url, i) => {
+        const resp = await fetch(url);
+        const blob = await resp.blob();
+        return new File([blob], `photo${i + 1}.jpg`, { type: blob.type || 'image/jpeg' });
+      }));
+    }
+  }catch(err){
+    diagReason = 'โหลดรูปไม่สำเร็จ: ' + err.message;
+    files = [];
+  }
+
+  if(files.length){
     try{
-      const files = lastLocalImages.map((du, i) => dataUrlToFile(du, `photo${i + 1}.jpg`));
-      if(!navigator.share){
-        diagReason = 'ไม่มี navigator.share';
-      } else if(!navigator.canShare){
-        diagReason = 'ไม่มี navigator.canShare';
-      } else if(!navigator.canShare({ files: files })){
-        diagReason = 'canShare({files}) = false';
-      } else {
-        navigator.share({ files: files }).catch(()=>{});
+      if(navigator.share && navigator.canShare && navigator.canShare({ files: files })){
+        await navigator.share({ files: files });
         showMsg('คัดลอกข้อความสรุปไว้แล้ว ✓ หลังแนบรูปใน LINE เสร็จ กด Paste วางข้อความต่อได้เลยครับ', true);
         return;
       }
+      diagReason = !navigator.share ? 'ไม่มี navigator.share' : (!navigator.canShare ? 'ไม่มี navigator.canShare' : 'canShare({files}) = false');
     }catch(shareErr){
+      if(shareErr && shareErr.name === 'AbortError') return; // ผู้ใช้กดยกเลิกการแชร์เอง ไม่ต้องทำอะไรต่อ
       diagReason = 'error: ' + shareErr.message;
     }
-  } else {
-    showMsg('คัดลอกข้อความสรุปแล้ว ✓ ไปวาง (Paste) ใน LINE ได้เลยครับ (รายการนี้ไม่มีรูป)', true);
-    return;
   }
-  // สำรอง: ดาวน์โหลดรูปถ่ายจริงลงเครื่อง (กรณี Web Share แนบไฟล์ไม่ได้) — ใช้ Blob URL ให้ดาวน์โหลดจริง ไม่ใช่แค่เปิดเป็นลิงก์รูป
-  lastLocalImages.forEach((du, i) => {
-    downloadDataUrl(du, `photo${i + 1}.jpg`);
+
+  // สำรอง: ดาวน์โหลดรูป (ถ้ามี) + เปิด LINE พร้อมข้อความเสมอ เพื่อไม่ให้เกิดกรณี "กดแล้วไม่มีอะไรเกิดขึ้น"
+  files.forEach((f, i) => {
+    const blobUrl = URL.createObjectURL(f);
+    const a = document.createElement('a');
+    a.href = blobUrl; a.download = `photo${i + 1}.jpg`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
   });
-  showMsg('คัดลอกข้อความสรุปไว้แล้ว + ดาวน์โหลดรูป ' + lastLocalImages.length + ' รูปลงเครื่อง กรุณาแนบรูป+วางข้อความใน LINE เองครับ [เหตุผล: ' + diagReason + ']', true);
-});
+
+  const topNavHelper = document.getElementById('topNavHelper');
+  topNavHelper.href = 'https://line.me/R/msg/text/?' + encodeURIComponent(textOnly);
+  topNavHelper.click();
+
+  showMsg((files.length ? 'ดาวน์โหลดรูป ' + files.length + ' รูปลงเครื่องแล้ว + ' : '') + 'เปิด LINE พร้อมข้อความสรุปให้แล้วครับ' + (diagReason ? ' [เหตุผล: ' + diagReason + ']' : ''), true);
+}
+document.getElementById('lineShareBtn').addEventListener('click', () => { shareToLine(); });
 
 // ---------- submit ----------
 const form = document.getElementById('form');
