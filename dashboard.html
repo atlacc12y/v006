@@ -354,6 +354,7 @@
       <input type="date" id="viewDate">
     </div>
     <p class="sub-desc" id="snapshotDateLabel" style="margin-top:8px;">กำลังโหลดข้อมูล…</p>
+    <table class="dash-table" id="tankCountTable" style="margin-bottom:12px;"></table>
     <div class="kpi-grid" id="kpiGrid"></div>
   </div>
 
@@ -363,15 +364,6 @@
     <div style="position:relative; height:260px;">
       <canvas id="sizeChart"></canvas>
     </div>
-  </div>
-
-  <div class="card">
-    <h2>จำนวนถังที่ผลิต แยกตามขนาด</h2>
-    <p class="sub-desc">ติดตามปริมาณการผลิตแยกตามประเภทถัง เพื่อดูสัดส่วนการผลิตได้ตลอดเวลา</p>
-    <div style="position:relative; height:220px;">
-      <canvas id="tankCountChart"></canvas>
-    </div>
-    <table class="dash-table" id="tankCountTable" style="margin-top:10px;"></table>
   </div>
 
   <div class="card">
@@ -447,7 +439,6 @@ function fmtNum(n){
   return (isFinite(n) ? n : 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-let tankCountChartInstance = null;
 
 function todayStr(){
   const d = new Date();
@@ -479,7 +470,6 @@ async function loadSnapshot(){
       document.getElementById('shiftTable').innerHTML = '';
       document.getElementById('tankCountTable').innerHTML = '';
       if(sizeChartInstance) sizeChartInstance.destroy();
-      if(tankCountChartInstance) tankCountChartInstance.destroy();
       return;
     }
 
@@ -520,21 +510,7 @@ async function loadSnapshot(){
       }
     });
 
-    // กราฟ+ตาราง จำนวนถังที่ผลิต แยกตามขนาด
-    const tankCountCtx = document.getElementById('tankCountChart').getContext('2d');
-    if(tankCountChartInstance) tankCountChartInstance.destroy();
-    tankCountChartInstance = new Chart(tankCountCtx, {
-      type: 'bar',
-      data: {
-        labels: json.tankSizes,
-        datasets: [{ label: 'จำนวนถัง', data: json.totalTanks.bySize, backgroundColor: '#2E9C4C' }]
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: { y: { beginAtZero: true } }
-      }
-    });
+    // ตาราง จำนวนถังที่ผลิต แยกตามขนาด (ไม่แสดงกราฟ)
     document.getElementById('tankCountTable').innerHTML = `
       <tr><th>ขนาดถัง</th>${json.tankSizes.map(s => `<th>${s}</th>`).join('')}<th>รวม</th></tr>
       <tr><td>จำนวนถัง (ใบ)</td>${json.totalTanks.bySize.map(v => `<td>${fmtNum(v).replace(/\.00$/, '')}</td>`).join('')}<td>${fmtNum(json.totalTanks.total).replace(/\.00$/, '')}</td></tr>
@@ -621,6 +597,9 @@ document.getElementById('viewDate').addEventListener('change', loadSnapshot);
 document.getElementById('refreshBtn').addEventListener('click', () => { loadSnapshot(); loadHistory(); });
 loadSnapshot();
 loadHistory();
+
+// รีเฟรชข้อมูลสดอัตโนมัติทุก 3 นาที (ไม่รบกวนช่วงเวลาที่ผู้ใช้กำลังเลือกวันที่ดูอยู่)
+setInterval(() => { loadSnapshot(); }, 3 * 60 * 1000);
 </script>
 
 </body>
