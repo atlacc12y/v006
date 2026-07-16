@@ -519,6 +519,20 @@ function dataUrlToFile(dataUrl, filename){
   return new File([bytes], filename, { type: mime });
 }
 
+// ดาวน์โหลดรูปให้เชื่อถือได้จริง: แปลง data: URI เป็น Blob URL ก่อน
+// (มือถือหลายรุ่นไม่รองรับ attribute download กับ data: URI โดยตรง เปิดเป็นลิงก์รูปภาพแทนที่จะดาวน์โหลด)
+function downloadDataUrl(dataUrl, filename){
+  const file = dataUrlToFile(dataUrl, filename);
+  const blobUrl = URL.createObjectURL(file);
+  const a = document.createElement('a');
+  a.href = blobUrl;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+}
+
 // วาดข้อความสรุปเป็น "รูปภาพ" หนึ่งใบ (ใช้ toDataURL แบบ sync ไม่ใช่ toBlob แบบ async
 // เพื่อไม่ให้เสียสิทธิ์ user-gesture ก่อนเรียก navigator.share) แล้วส่งไปพร้อมรูปถ่ายจริง
 // เพื่อให้ LINE แสดงข้อความสรุปแน่นอน 100% (บางแอปไม่แสดง text ที่แนบมากับ navigator.share)
@@ -608,14 +622,9 @@ document.getElementById('lineShareBtn').addEventListener('click', () => {
     showMsg('คัดลอกข้อความสรุปแล้ว ✓ ไปวาง (Paste) ใน LINE ได้เลยครับ (รายการนี้ไม่มีรูป)', true);
     return;
   }
-  // สำรอง: ดาวน์โหลดรูปถ่ายจริงลงเครื่อง (กรณี Web Share แนบไฟล์ไม่ได้)
+  // สำรอง: ดาวน์โหลดรูปถ่ายจริงลงเครื่อง (กรณี Web Share แนบไฟล์ไม่ได้) — ใช้ Blob URL ให้ดาวน์โหลดจริง ไม่ใช่แค่เปิดเป็นลิงก์รูป
   lastLocalImages.forEach((du, i) => {
-    const a = document.createElement('a');
-    a.href = du;
-    a.download = `photo${i + 1}.jpg`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+    downloadDataUrl(du, `photo${i + 1}.jpg`);
   });
   showMsg('คัดลอกข้อความสรุปไว้แล้ว + ดาวน์โหลดรูป ' + lastLocalImages.length + ' รูปลงเครื่อง กรุณาแนบรูป+วางข้อความใน LINE เองครับ [เหตุผล: ' + diagReason + ']', true);
 });
@@ -659,7 +668,7 @@ inForm.addEventListener('submit', async (e) => {
     if(json && json.status === 'ok'){
       const isExitOnly = json.isExitOnly;
       showMsg((isExitOnly ? 'บันทึกเวลาออกสำเร็จ (' + json.timeOut : 'บันทึกเวลาเข้าสำเร็จ (' + json.timeIn) + ') ✓', true);
-      const localImgs = captureImages['gatein'].filter(x => !!x);
+      const localImgs = captureImages['gatein'].filter(x => x && x.indexOf('data:') === 0);
       inForm.reset();
       document.getElementById('roundNo').value = 1;
       [0,1,2].forEach(i => {
@@ -765,7 +774,7 @@ async function recordGateOut(btn){
     const json = await res.json();
     if(json && json.status === 'ok'){
       showMsg('บันทึกเวลาออกสำเร็จ ใช้เวลา ' + json.duration + ' นาที ✓', true);
-      const localImgs = captureImages[key].filter(x => !!x);
+      const localImgs = captureImages[key].filter(x => x && x.indexOf('data:') === 0);
       loadOpenList();
       loadHistory();
       showSummary('รถออกจากโรงงานแล้ว', [
