@@ -506,8 +506,8 @@
 
   <!-- รายการที่บันทึก (ขั้นที่ 2: ชั่งเครื่องชั่งกลางทีหลัง) -->
   <div class="card">
-    <h2>รายการที่บันทึกแล้ว <span id="entryCountBadge" class="badge-draft">0 รายการ</span></h2>
-    <p class="sub-desc">เมื่อยกถังไปชั่งบนเครื่องชั่งกลางแล้ว ให้กลับมากรอกน้ำหนักที่ได้ในแต่ละรายการด้านล่างนี้ ระบบจะคำนวณขาด/เกินให้ทันที</p>
+    <h2>รายการที่บันทึกแล้ว <span class="badge-draft">ขั้นที่ 2</span> <span id="entryCountBadge" class="badge-draft">0 รายการ</span></h2>
+    <p class="sub-desc">เมื่อยกถังไปชั่งบนเครื่องชั่งกลางแล้ว ให้กลับมากรอกน้ำหนักที่ได้ในแต่ละรายการด้านล่างนี้ ระบบจะคำนวณขาด/เกินให้ทันที ถังที่ได้มาตรฐานไม่ต้องทำอะไรต่อ ถังที่เกินค่าเผื่อระบบจะคัดแยกไปให้กรอกน้ำหนักหลังแก้ไขในการ์ดถัดไป</p>
     <div class="entry-list" id="entryList">
       <div class="empty-hint">ยังไม่มีรายการ — กรอกด้านบนแล้วกด "เพิ่มรายการ"</div>
     </div>
@@ -515,6 +515,13 @@
       <span class="lbl">รวมน้ำหนักขาด/เกินทั้งหมด</span>
       <span class="val" id="totalNet">0.00 Kg.</span>
     </div>
+  </div>
+
+  <!-- ขั้นที่ 3: ถังที่คัดแยกไว้ นำกลับไปอัดบรรจุแก้ไขในเครื่องเดิม แล้วกลับมาชั่งตราชั่งกลางอีกครั้ง -->
+  <div class="card" id="correctionCard" style="display:none;">
+    <h2>ถังที่ต้องนำกลับไปแก้ไข <span class="badge-draft">ขั้นที่ 3</span> <span id="correctionCountBadge" class="badge-draft" style="background:#FBEBEC; color:var(--red);">0 ถัง</span></h2>
+    <p class="sub-desc">นำถังที่คัดแยกไว้กลับไปอัดบรรจุแก้ไขที่เครื่องเดิม แล้วนำกลับมาชั่งที่ตราชั่งกลางอีกครั้ง จากนั้นกรอกน้ำหนักหลังแก้ไขที่ได้ให้ครบทุกถัง</p>
+    <div id="correctionList"></div>
   </div>
 
   <!-- ตารางค่าเผื่อ (อ้างอิง) -->
@@ -756,6 +763,7 @@ function renderEntries(){
       entries.splice(idx, 1);
       refreshMachineDropdown();
       renderEntries();
+      renderCorrectionList();
     });
   });
 
@@ -776,10 +784,9 @@ function renderEntries(){
       entry.isProblem = isProblem;
       entry.weighed = true;
       renderEntries();
-
-      if(isProblem){
-        setTimeout(() => promptCorrection(entry), 50);
-      }
+      renderCorrectionList();
+      // ถังที่เกินค่าเผื่อ: แค่คัดแยกไว้เฉยๆ (ไม่ต้องกรอกอะไรตอนนี้) — จะกลับมากรอกน้ำหนักหลังแก้ไขทีหลัง
+      // ในการ์ด "ถังที่ต้องนำกลับไปแก้ไข" หลังจากชั่งครบทุกถังแล้ว ตรงตามขั้นตอนการทำงานจริง
     });
   });
 
@@ -789,11 +796,63 @@ function renderEntries(){
   totalNet.textContent = fmt(sum) + ' Kg.' + (weighedEntries.length < entries.length ? ` (จาก ${weighedEntries.length}/${entries.length} รายการที่ชั่งแล้ว)` : '');
 }
 
-function promptCorrection(entry){
-  alert('⚠️ ถัง ' + entry.tankNo + ' ค่าเกินค่าเผื่อที่กำหนด (± ' + entry.tol.toFixed(2) + ' Kg.)\nกรุณากรอกน้ำหนักหลังการแก้ไข:');
-  const afterFix = prompt('น้ำหนักหลังการแก้ไข (Kg.):');
-  entry.afterFixWeight = afterFix;
-  renderEntries();
+// ขั้นที่ 3: รายการถังที่คัดแยกไว้ (เกินค่าเผื่อ) ให้กรอกน้ำหนักหลังนำไปแก้ไขและชั่งตราชั่งกลางใหม่
+const correctionCard = document.getElementById('correctionCard');
+const correctionList = document.getElementById('correctionList');
+const correctionCountBadge = document.getElementById('correctionCountBadge');
+
+function renderCorrectionList(){
+  const pending = entries.filter(e => e.isProblem && !e.afterFixWeight);
+  const fixed = entries.filter(e => e.isProblem && e.afterFixWeight);
+
+  if(pending.length === 0 && fixed.length === 0){
+    correctionCard.style.display = 'none';
+    return;
+  }
+  correctionCard.style.display = 'block';
+  correctionCountBadge.textContent = pending.length + ' ถัง';
+  correctionCountBadge.style.background = pending.length > 0 ? '#FBEBEC' : '#DDF3E1';
+  correctionCountBadge.style.color = pending.length > 0 ? 'var(--red)' : 'var(--green)';
+
+  const pendingHtml = pending.map(e => `
+    <div class="entry-row" style="flex-wrap:wrap;">
+      <div class="info">
+        <div class="l1">⚠️ เครื่อง ${e.fillMachineNo} · ถัง ${e.tankNo} · ${e.size} Kg.</div>
+        <div class="l2">ควรได้ ${fmt(e.net)} Kg. · ชั่งได้ ${fmt(e.central)} Kg. · เกิน/ขาด ${e.diff >= 0 ? '+' : ''}${fmt(e.diff)} Kg.</div>
+      </div>
+      <div style="flex-basis:100%; display:flex; gap:8px; margin-top:8px;">
+        <input type="number" step="0.01" inputmode="decimal" placeholder="น้ำหนักหลังแก้ไข (Kg.)" id="fix_${e.id}" style="flex:1;">
+        <button type="button" class="weigh-btn" data-fixid="${e.id}" style="background:var(--red); color:#fff; border:none; border-radius:8px; padding:0 14px; font-weight:700; font-size:12.5px;">บันทึก</button>
+      </div>
+    </div>
+  `).join('');
+
+  const fixedHtml = fixed.map(e => `
+    <div class="entry-row">
+      <div class="info">
+        <div class="l1">✓ เครื่อง ${e.fillMachineNo} · ถัง ${e.tankNo} · ${e.size} Kg.</div>
+        <div class="l2">น้ำหนักหลังแก้ไข ${e.afterFixWeight} Kg. — แก้ไขเรียบร้อยแล้ว</div>
+      </div>
+    </div>
+  `).join('');
+
+  correctionList.innerHTML = pendingHtml + fixedHtml;
+
+  correctionList.querySelectorAll('.weigh-btn[data-fixid]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = parseInt(btn.dataset.fixid, 10);
+      const entry = entries.find(e => e.id === id);
+      const input = document.getElementById(`fix_${id}`);
+      const val = input.value;
+      if(val === '' || isNaN(parseFloat(val))){
+        alert('กรุณากรอกน้ำหนักหลังแก้ไข');
+        return;
+      }
+      entry.afterFixWeight = val;
+      renderEntries();
+      renderCorrectionList();
+    });
+  });
 }
 
 document.getElementById('addEntryBtn').addEventListener('click', () => {
@@ -995,6 +1054,7 @@ async function loadDataForDate(){
 
     refreshMachineDropdown();
     renderEntries();
+    renderCorrectionList();
     renderFixes();
   }catch(err){
     dateStatusEl.style.background = '#FBEBEC';
