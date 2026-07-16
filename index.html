@@ -608,6 +608,20 @@ function dataUrlToFile(dataUrl, filename){
   return new File([bytes], filename, { type: mime });
 }
 
+// ดาวน์โหลดรูปให้เชื่อถือได้จริง: แปลง data: URI เป็น Blob URL ก่อน
+// (มือถือหลายรุ่นไม่รองรับ attribute download กับ data: URI โดยตรง เปิดเป็นลิงก์รูปภาพแทนที่จะดาวน์โหลด)
+function downloadDataUrl(dataUrl, filename){
+  const file = dataUrlToFile(dataUrl, filename);
+  const blobUrl = URL.createObjectURL(file);
+  const a = document.createElement('a');
+  a.href = blobUrl;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+}
+
 // วาดข้อความสรุปเป็น "รูปภาพ" หนึ่งใบ (ใช้ toDataURL แบบ sync ไม่ใช่ toBlob แบบ async
 // เพื่อไม่ให้เสียสิทธิ์ user-gesture ก่อนเรียก navigator.share) แล้วส่งไปพร้อมรูปถ่ายจริง
 // เพื่อให้ LINE แสดงข้อความสรุปแน่นอน 100% (บางแอปไม่แสดง text ที่แนบมากับ navigator.share)
@@ -697,14 +711,9 @@ document.getElementById('lineShareBtn').addEventListener('click', () => {
     showMsg('คัดลอกข้อความสรุปแล้ว ✓ ไปวาง (Paste) ใน LINE ได้เลยครับ (รายการนี้ไม่มีรูป)', true);
     return;
   }
-  // สำรอง: ดาวน์โหลดรูปถ่ายจริงลงเครื่อง (กรณี Web Share แนบไฟล์ไม่ได้)
+  // สำรอง: ดาวน์โหลดรูปถ่ายจริงลงเครื่อง (กรณี Web Share แนบไฟล์ไม่ได้) — ใช้ Blob URL ให้ดาวน์โหลดจริง ไม่ใช่แค่เปิดเป็นลิงก์รูป
   lastLocalImages.forEach((du, i) => {
-    const a = document.createElement('a');
-    a.href = du;
-    a.download = `photo${i + 1}.jpg`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+    downloadDataUrl(du, `photo${i + 1}.jpg`);
   });
   showMsg('คัดลอกข้อความสรุปไว้แล้ว + ดาวน์โหลดรูป ' + lastLocalImages.length + ' รูปลงเครื่อง กรุณาแนบรูป+วางข้อความใน LINE เองครับ [เหตุผล: ' + diagReason + ']', true);
 });
@@ -739,7 +748,7 @@ form.addEventListener('submit', async (e) => {
 
   submitBtn.disabled = true;
   submitBtn.textContent = 'กำลังบันทึก…';
-  const localImgs = imageData.filter(x => !!x);
+  const localImgs = imageData.filter(x => x && x.indexOf('data:') === 0); // เฉพาะรูปที่เพิ่งถ่ายใหม่ (base64) เท่านั้น ไม่รวมรูปเก่าที่โหลดมาเป็นลิงก์ Drive
   try{
     const res = await fetch(GAS_URL, { method:'POST', body: JSON.stringify(payload) });
     const json = await res.json();
