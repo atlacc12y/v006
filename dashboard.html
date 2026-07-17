@@ -361,7 +361,9 @@
   <div class="card">
     <h2>แผนอัดบรรจุ</h2>
     <p class="sub-desc">วางแผนเป็นจำนวนถังแต่ละขนาดของวันที่เลือกไว้ด้านบน ระบบจะคำนวณยอดน้ำแก๊สรวมให้อัตโนมัติ และเทียบกับยอดอัดบรรจุจริง (เข้าระบบ LMS) ให้ทันที</p>
-    <table class="dash-table" id="planInputTable" style="margin-bottom:10px;"></table>
+    <div style="overflow-x:auto;">
+      <table class="dash-table" id="planInputTable" style="margin-bottom:10px; min-width:620px;"></table>
+    </div>
     <div class="sub-desc" style="text-align:right; font-weight:700; color:var(--ink);" id="planTotalPreview">ยอดน้ำแก๊สรวมจากแผน: 0.00 Kg.</div>
     <button type="button" class="save-btn" id="savePlanBtn" style="max-width:none; margin-bottom:12px;">บันทึกแผนอัดบรรจุ</button>
     <div class="kpi-grid" id="planKpiGrid"></div>
@@ -525,6 +527,8 @@ async function loadSnapshot(){
       (isToday ? 'ข้อมูลสด ณ วันที่ ' : 'ข้อมูลที่บันทึกไว้ของวันที่ ') + (json.dateLabel || selectedDate);
 
     lastActualLms = json.lmsTotal.total;
+    lastActualTankCounts = json.totalTanks.bySize;
+    updatePlanTotalPreview();
 
     const diff = json.lmsTotal.total - json.targetTotal.total;
     const kpis = [
@@ -644,6 +648,7 @@ async function loadHistory(){
 
 // ---------- แผนอัดบรรจุ (Production Plan) ----------
 let lastActualLms = 0; // เก็บยอดอัดบรรจุจริงล่าสุดไว้เทียบกับแผน
+let lastActualTankCounts = new Array(7).fill(0); // จำนวนถังจริงแต่ละขนาด (เรียงตาม PLAN_TANK_SIZES)
 const PLAN_TANK_SIZES = ['4', '7', '12.5', '15', '15FL', '48', '48LW'];
 
 function nominalWeightForSize(size){
@@ -655,17 +660,37 @@ function nominalWeightForSize(size){
 document.getElementById('planInputTable').innerHTML = `
   <tr><th>ขนาดถัง</th>${PLAN_TANK_SIZES.map(s => `<th>${s}</th>`).join('')}</tr>
   <tr>
-    <td>จำนวนถัง (ใบ)</td>
-    ${PLAN_TANK_SIZES.map((s, i) => `<td><input type="number" min="0" step="1" inputmode="numeric" class="plan-count-input" data-idx="${i}" style="width:100%; border:1px solid var(--line); border-radius:6px; padding:4px; text-align:center; font-family:'IBM Plex Mono',monospace;" placeholder="0"></td>`).join('')}
+    <td>แผนอัดบรรจุ (ใบ)</td>
+    ${PLAN_TANK_SIZES.map((s, i) => `<td style="min-width:48px;"><input type="number" min="0" step="1" inputmode="numeric" class="plan-count-input" data-idx="${i}" style="width:100%; min-width:44px; border:1px solid var(--line); border-radius:6px; padding:5px 2px; text-align:center; font-family:'IBM Plex Mono',monospace; font-size:12.5px;" placeholder="0"></td>`).join('')}
+  </tr>
+  <tr>
+    <td>อัดบรรจุจริง (ใบ)</td>
+    ${PLAN_TANK_SIZES.map((s, i) => `<td id="planActual_${i}" style="color:var(--ink-soft);">-</td>`).join('')}
+  </tr>
+  <tr>
+    <td>ผลต่าง (จริง−แผน)</td>
+    ${PLAN_TANK_SIZES.map((s, i) => `<td id="planDiff_${i}" style="font-weight:700;">-</td>`).join('')}
   </tr>
 `;
 
 function updatePlanTotalPreview(){
   let total = 0;
-  document.querySelectorAll('.plan-count-input').forEach(inp => {
-    const idx = parseInt(inp.dataset.idx, 10);
-    const count = parseFloat(inp.value) || 0;
-    total += count * nominalWeightForSize(PLAN_TANK_SIZES[idx]);
+  PLAN_TANK_SIZES.forEach((size, idx) => {
+    const inp = document.querySelector(`.plan-count-input[data-idx="${idx}"]`);
+    const planCount = inp ? (parseFloat(inp.value) || 0) : 0;
+    const actualCount = lastActualTankCounts[idx] || 0;
+    const diffCount = actualCount - planCount;
+
+    total += planCount * nominalWeightForSize(size);
+
+    const actualCell = document.getElementById(`planActual_${idx}`);
+    const diffCell = document.getElementById(`planDiff_${idx}`);
+    if(actualCell) actualCell.textContent = fmtNum(actualCount).replace(/\.00$/, '');
+    if(diffCell){
+      const hasPlan = inp && inp.value !== '';
+      diffCell.textContent = hasPlan ? ((diffCount >= 0 ? '+' : '') + fmtNum(diffCount).replace(/\.00$/, '')) : '-';
+      diffCell.style.color = !hasPlan ? 'var(--ink-soft)' : (diffCount >= 0 ? 'var(--green)' : 'var(--red)');
+    }
   });
   document.getElementById('planTotalPreview').textContent = 'ยอดน้ำแก๊สรวมจากแผน: ' + fmtNum(total) + ' Kg.';
   return total;
