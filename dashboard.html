@@ -354,18 +354,17 @@
       <input type="date" id="viewDate">
     </div>
     <p class="sub-desc" id="snapshotDateLabel" style="margin-top:8px;">กำลังโหลดข้อมูล…</p>
-    <table class="dash-table" id="tankCountTable" style="margin-bottom:12px;"></table>
+    <div style="overflow-x:auto;">
+      <table class="dash-table" id="tankCountTable" style="margin-bottom:12px; min-width:620px;"></table>
+    </div>
+    <div class="sub-desc" style="text-align:right; font-weight:700; color:var(--ink); margin-bottom:10px;" id="planTotalPreview">ยอดน้ำแก๊สรวมจากแผน: 0.00 Kg.</div>
+    <button type="button" class="save-btn" id="savePlanBtn" style="max-width:none; margin-bottom:12px;">บันทึกแผนอัดบรรจุ</button>
     <div class="kpi-grid" id="kpiGrid"></div>
   </div>
 
   <div class="card">
     <h2>แผนอัดบรรจุ</h2>
-    <p class="sub-desc">วางแผนเป็นจำนวนถังแต่ละขนาดของวันที่เลือกไว้ด้านบน ระบบจะคำนวณยอดน้ำแก๊สรวมให้อัตโนมัติ และเทียบกับยอดอัดบรรจุจริง (เข้าระบบ LMS) ให้ทันที</p>
-    <div style="overflow-x:auto;">
-      <table class="dash-table" id="planInputTable" style="margin-bottom:10px; min-width:620px;"></table>
-    </div>
-    <div class="sub-desc" style="text-align:right; font-weight:700; color:var(--ink);" id="planTotalPreview">ยอดน้ำแก๊สรวมจากแผน: 0.00 Kg.</div>
-    <button type="button" class="save-btn" id="savePlanBtn" style="max-width:none; margin-bottom:12px;">บันทึกแผนอัดบรรจุ</button>
+    <p class="sub-desc">วางแผนเป็นจำนวนถังแต่ละขนาดในตารางด้านบน (แถว "แผนอัดบรรจุ") ระบบจะคำนวณยอดน้ำแก๊สรวมให้อัตโนมัติ และเทียบกับยอดอัดบรรจุจริง (เข้าระบบ LMS) ให้ทันที</p>
     <div class="kpi-grid" id="planKpiGrid"></div>
   </div>
 
@@ -528,7 +527,6 @@ async function loadSnapshot(){
 
     lastActualLms = json.lmsTotal.total;
     lastActualTankCounts = json.totalTanks.bySize;
-    updatePlanTotalPreview();
 
     const diff = json.lmsTotal.total - json.targetTotal.total;
     const kpis = [
@@ -564,11 +562,29 @@ async function loadSnapshot(){
       }
     });
 
-    // ตาราง จำนวนถังที่ผลิต แยกตามขนาด (ไม่แสดงกราฟ)
+    // ตาราง จำนวนถังที่ผลิต แยกตามขนาด + แผนอัดบรรจุ + ผลต่าง (รวมเป็นตารางเดียว)
     document.getElementById('tankCountTable').innerHTML = `
       <tr><th>ขนาดถัง</th>${json.tankSizes.map(s => `<th>${s}</th>`).join('')}<th>รวม</th></tr>
-      <tr><td>จำนวนถัง (ใบ)</td>${json.totalTanks.bySize.map(v => `<td>${fmtNum(v).replace(/\.00$/, '')}</td>`).join('')}<td>${fmtNum(json.totalTanks.total).replace(/\.00$/, '')}</td></tr>
+      <tr>
+        <td>อัดบรรจุจริง (ใบ)</td>
+        ${json.totalTanks.bySize.map(v => `<td>${fmtNum(v).replace(/\.00$/, '')}</td>`).join('')}
+        <td>${fmtNum(json.totalTanks.total).replace(/\.00$/, '')}</td>
+      </tr>
+      <tr>
+        <td>แผนอัดบรรจุ (ใบ)</td>
+        ${json.tankSizes.map((s, i) => `<td><input type="number" min="0" step="1" inputmode="numeric" class="plan-count-input" data-idx="${i}" style="width:100%; min-width:44px; border:1px solid var(--line); border-radius:6px; padding:5px 2px; text-align:center; font-family:'IBM Plex Mono',monospace; font-size:12.5px;" placeholder="0"></td>`).join('')}
+        <td></td>
+      </tr>
+      <tr>
+        <td>ผลต่าง (จริง−แผน)</td>
+        ${json.tankSizes.map((s, i) => `<td id="planDiff_${i}" style="font-weight:700; color:var(--ink-soft);">-</td>`).join('')}
+        <td></td>
+      </tr>
     `;
+    document.querySelectorAll('.plan-count-input').forEach(inp => {
+      inp.addEventListener('input', updatePlanTotalPreview);
+    });
+    updatePlanTotalPreview();
 
     // ตารางแยกตามกะ (มีเฉพาะข้อมูลวันนี้ ข้อมูลย้อนหลังไม่มีรายละเอียดต่อกะ)
     const shiftTableNote = document.getElementById('shiftTableNote');
@@ -656,23 +672,6 @@ function nominalWeightForSize(size){
   return m ? parseFloat(m[0]) : 0;
 }
 
-// สร้างตารางกรอกจำนวนถังแต่ละขนาด (ครั้งเดียวตอนโหลดหน้า)
-document.getElementById('planInputTable').innerHTML = `
-  <tr><th>ขนาดถัง</th>${PLAN_TANK_SIZES.map(s => `<th>${s}</th>`).join('')}</tr>
-  <tr>
-    <td>แผนอัดบรรจุ (ใบ)</td>
-    ${PLAN_TANK_SIZES.map((s, i) => `<td style="min-width:48px;"><input type="number" min="0" step="1" inputmode="numeric" class="plan-count-input" data-idx="${i}" style="width:100%; min-width:44px; border:1px solid var(--line); border-radius:6px; padding:5px 2px; text-align:center; font-family:'IBM Plex Mono',monospace; font-size:12.5px;" placeholder="0"></td>`).join('')}
-  </tr>
-  <tr>
-    <td>อัดบรรจุจริง (ใบ)</td>
-    ${PLAN_TANK_SIZES.map((s, i) => `<td id="planActual_${i}" style="color:var(--ink-soft);">-</td>`).join('')}
-  </tr>
-  <tr>
-    <td>ผลต่าง (จริง−แผน)</td>
-    ${PLAN_TANK_SIZES.map((s, i) => `<td id="planDiff_${i}" style="font-weight:700;">-</td>`).join('')}
-  </tr>
-`;
-
 function updatePlanTotalPreview(){
   let total = 0;
   PLAN_TANK_SIZES.forEach((size, idx) => {
@@ -683,9 +682,7 @@ function updatePlanTotalPreview(){
 
     total += planCount * nominalWeightForSize(size);
 
-    const actualCell = document.getElementById(`planActual_${idx}`);
     const diffCell = document.getElementById(`planDiff_${idx}`);
-    if(actualCell) actualCell.textContent = fmtNum(actualCount).replace(/\.00$/, '');
     if(diffCell){
       const hasPlan = inp && inp.value !== '';
       diffCell.textContent = hasPlan ? ((diffCount >= 0 ? '+' : '') + fmtNum(diffCount).replace(/\.00$/, '')) : '-';
