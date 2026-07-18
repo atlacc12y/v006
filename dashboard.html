@@ -869,13 +869,20 @@ document.getElementById('randomWeighRefreshBtn').addEventListener('click', loadR
 
 document.getElementById('viewDate').valueAsDate = new Date();
 document.getElementById('viewDate').addEventListener('change', async () => { await loadSnapshot(); loadProductionPlan(); });
-document.getElementById('refreshBtn').addEventListener('click', async () => { await loadSnapshot(); loadHistory(); loadProductionPlan(); });
+document.getElementById('refreshBtn').addEventListener('click', async () => {
+  const snapshotPromise = loadSnapshot();
+  loadHistory();
+  await snapshotPromise;
+  loadProductionPlan();
+});
 
 (async () => {
-  await loadSnapshot();
+  // เริ่มโหลดพร้อมกันทุกส่วนที่ไม่ได้พึ่งพากัน (เร็วกว่ารอทีละอย่างตามลำดับ)
+  const snapshotPromise = loadSnapshot();
   loadHistory();
-  loadProductionPlan();
   loadRandomWeigh();
+  await snapshotPromise; // แผนอัดบรรจุต้องรอให้ตารางจากข้อมูลสดถูกสร้างขึ้นก่อน (ใช้ element ร่วมกัน)
+  loadProductionPlan();
 })();
 
 // รีเฟรชข้อมูลสดอัตโนมัติทุก 3 นาที (ไม่รบกวนช่วงเวลาที่ผู้ใช้กำลังเลือกวันที่ดูอยู่)
