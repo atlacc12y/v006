@@ -6,7 +6,6 @@
 <title>Dashboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;800&family=IBM+Plex+Mono:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
   :root{
     --paper:#F2F4F7;
@@ -313,6 +312,16 @@
   .dash-table td{ padding:7px 8px; border-bottom:1px solid var(--line); text-align:right; font-family:'IBM Plex Mono',monospace; }
   .dash-table td:first-child{ text-align:left; font-family:'Inter',sans-serif; font-weight:600; }
   .dash-table tr:last-child td{ font-weight:700; background:var(--paper); }
+
+  /* โหมด Desktop: จอกว้างขึ้น ใช้พื้นที่แนวนอนให้คุ้มค่า แทนที่จะแคบเหมือนมือถือ */
+  @media (min-width:900px){
+    main{ max-width:1100px; padding:0 24px; }
+    .kpi-grid{ grid-template-columns:repeat(5, 1fr); }
+    .card{ padding:20px 22px; }
+  }
+  @media (min-width:1300px){
+    main{ max-width:1300px; }
+  }
 </style>
 </head>
 <body>
@@ -371,14 +380,6 @@
   </div>
 
   <div class="card">
-    <h2>เปรียบเทียบตามขนาดถัง (Kg.)</h2>
-    <p class="sub-desc">เข้าระบบ LMS เทียบกับเป้าน้ำแก๊สตามขนาดถัง</p>
-    <div style="position:relative; height:260px;">
-      <canvas id="sizeChart"></canvas>
-    </div>
-  </div>
-
-  <div class="card">
     <h2>แยกตามกะ</h2>
     <p class="sub-desc" id="shiftTableNote">น้ำแก๊สที่รับ / จำนวนถัง / Gain ของแต่ละกะ</p>
     <div style="overflow-x:auto;">
@@ -387,12 +388,10 @@
   </div>
 
   <div class="card">
-    <h2>แนวโน้มย้อนหลัง</h2>
-    <p class="sub-desc">ระบบบันทึกสรุปของแต่ละวันอัตโนมัติทุกคืน (ต้องตั้งเวลาทำงานใน Apps Script ก่อน 1 ครั้ง — ดูวิธีด้านล่าง) กราฟจะเริ่มมีข้อมูลตั้งแต่วันที่เริ่มบันทึกเป็นต้นไป</p>
-    <div style="position:relative; height:260px;">
-      <canvas id="trendChart"></canvas>
-    </div>
-    <div id="noHistoryHint" class="empty-hint" style="display:none;">ยังไม่มีข้อมูลย้อนหลัง — จะเริ่มมีข้อมูลตั้งแต่คืนแรกที่ระบบบันทึกอัตโนมัติเป็นต้นไป</div>
+    <h2>แก๊สเข้าวันนี้ (Daily Gas Receipt Report)</h2>
+    <p class="sub-desc">สรุปยอดแก๊สที่รับเข้าของวันที่เลือกไว้ด้านบน (จากใบรับก๊าซแต่ละเที่ยว)</p>
+    <div class="kpi-grid" id="receiptKpiGrid"></div>
+    <table class="dash-table" id="receiptTable" style="margin-top:10px;"></table>
   </div>
 
   <div class="card">
@@ -415,23 +414,6 @@
     <h2>สุ่มชั่งน้ำหนัก แยกตามขนาดถัง</h2>
     <p class="sub-desc">ผลต่างเฉลี่ย/สูงสุด/ต่ำสุด แยกตามขนาดถัง เพื่อดูว่าขนาดไหนคลาดเคลื่อนมากผิดปกติ</p>
     <table class="dash-table" id="rwSizeTable"></table>
-  </div>
-
-  <div class="card">
-    <h2>สุ่มชั่งน้ำหนัก แนวโน้มผลต่างเฉลี่ย รายวัน</h2>
-    <p class="sub-desc">ติดตามผลต่างเฉลี่ยย้อนหลัง เพื่อดูว่าค่าน้ำหนักคลาดเคลื่อนไปทางเกิน/ขาดมากขึ้นหรือน้อยลง</p>
-    <div style="position:relative; height:240px;">
-      <canvas id="rwTrendChart"></canvas>
-    </div>
-    <div id="rwNoDataHint" class="empty-hint" style="display:none;">ไม่มีข้อมูลสุ่มชั่งในช่วงวันที่ที่เลือก</div>
-  </div>
-
-  <div class="card">
-    <h2>รายการสุ่มชั่งล่าสุด <span class="badge-draft" id="rwRecentCountBadge">0 รายการ</span></h2>
-    <p class="sub-desc">แถวสีแดง = ผลต่างเกิน ±0.5 Kg. (คลาดเคลื่อนมากผิดปกติ)</p>
-    <div style="overflow-x:auto;">
-      <table class="dash-table" id="rwRecentTable"></table>
-    </div>
   </div>
 
   <div class="card">
@@ -483,8 +465,6 @@ function showMsg(text, ok){
 
 
 // ---------- โหลด "สรุปวันนี้" ----------
-let sizeChartInstance = null;
-let trendChartInstance = null;
 
 function fmtNum(n){
   return (isFinite(n) ? n : 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -519,8 +499,15 @@ async function loadSnapshot(){
       document.getElementById('snapshotDateLabel').textContent = `ยังไม่มีข้อมูลที่บันทึกไว้ของวันที่ ${selectedDate} (ระบบบันทึกอัตโนมัติทุกคืน เริ่มนับตั้งแต่วันที่ตั้งค่าไว้เป็นต้นไป)`;
       document.getElementById('kpiGrid').innerHTML = '';
       document.getElementById('shiftTable').innerHTML = '';
-      document.getElementById('tankCountTable').innerHTML = '';
-      if(sizeChartInstance) sizeChartInstance.destroy();
+      lastActualLms = 0;
+      lastActualTankCounts = new Array(PLAN_TANK_SIZES.length).fill(0);
+      PLAN_TANK_SIZES.forEach((s, i) => {
+        const cell = document.getElementById(`actualCount_${i}`);
+        if(cell) cell.textContent = '-';
+      });
+      const totalCell = document.getElementById('actualCountTotal');
+      if(totalCell) totalCell.textContent = '-';
+      updatePlanTotalPreview();
       return;
     }
 
@@ -545,47 +532,14 @@ async function loadSnapshot(){
       </div>
     `).join('');
 
-    // กราฟเปรียบเทียบตามขนาดถัง
-    const sizeCtx = document.getElementById('sizeChart').getContext('2d');
-    if(sizeChartInstance) sizeChartInstance.destroy();
-    sizeChartInstance = new Chart(sizeCtx, {
-      type: 'bar',
-      data: {
-        labels: json.tankSizes,
-        datasets: [
-          { label: 'เข้าระบบ LMS', data: json.lmsTotal.bySize, backgroundColor: '#2F6FE0' },
-          { label: 'เป้าน้ำแก๊ส', data: json.targetTotal.bySize, backgroundColor: '#94A3B8' }
-        ]
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } },
-        scales: { y: { beginAtZero: true } }
-      }
+    // อัปเดตแค่ค่าในแถว "อัดบรรจุจริง" ของตาราง — ไม่รื้อสร้างตารางใหม่ทั้งหมด
+    // (เดิมรื้อสร้างทุกครั้งที่โหลดข้อมูล ทำให้ช่องกรอกแผนอัดบรรจุที่ผู้ใช้พิมพ์ไว้ถูกล้างเป็นค่าว่างชั่วขณะ ดูเหมือนขึ้นเป็น 0)
+    json.totalTanks.bySize.forEach((v, i) => {
+      const cell = document.getElementById(`actualCount_${i}`);
+      if(cell) cell.textContent = fmtNum(v).replace(/\.00$/, '');
     });
-
-    // ตาราง จำนวนถังที่ผลิต แยกตามขนาด + แผนอัดบรรจุ + ผลต่าง (รวมเป็นตารางเดียว)
-    document.getElementById('tankCountTable').innerHTML = `
-      <tr><th>ขนาดถัง</th>${json.tankSizes.map(s => `<th>${s}</th>`).join('')}<th>รวม</th></tr>
-      <tr>
-        <td>อัดบรรจุจริง (ใบ)</td>
-        ${json.totalTanks.bySize.map(v => `<td>${fmtNum(v).replace(/\.00$/, '')}</td>`).join('')}
-        <td>${fmtNum(json.totalTanks.total).replace(/\.00$/, '')}</td>
-      </tr>
-      <tr>
-        <td>แผนอัดบรรจุ (ใบ)</td>
-        ${json.tankSizes.map((s, i) => `<td><input type="number" min="0" step="1" inputmode="numeric" class="plan-count-input" data-idx="${i}" style="width:100%; min-width:44px; border:1px solid var(--line); border-radius:6px; padding:5px 2px; text-align:center; font-family:'IBM Plex Mono',monospace; font-size:12.5px;" placeholder="0"></td>`).join('')}
-        <td></td>
-      </tr>
-      <tr>
-        <td>ผลต่าง (จริง−แผน)</td>
-        ${json.tankSizes.map((s, i) => `<td id="planDiff_${i}" style="font-weight:700; color:var(--ink-soft);">-</td>`).join('')}
-        <td></td>
-      </tr>
-    `;
-    document.querySelectorAll('.plan-count-input').forEach(inp => {
-      inp.addEventListener('input', updatePlanTotalPreview);
-    });
+    const totalCell = document.getElementById('actualCountTotal');
+    if(totalCell) totalCell.textContent = fmtNum(json.totalTanks.total).replace(/\.00$/, '');
     updatePlanTotalPreview();
 
     // ตารางแยกตามกะ (มีเฉพาะข้อมูลวันนี้ ข้อมูลย้อนหลังไม่มีรายละเอียดต่อกะ)
@@ -628,46 +582,36 @@ async function loadSnapshot(){
 }
 
 // ---------- โหลดแนวโน้มย้อนหลัง ----------
-async function loadHistory(){
-  try{
-    const res = await fetch(GAS_URL + '?action=dashboardHistory&days=30');
-    const json = await res.json();
-    const rows = (json && json.rows) || [];
-
-    const trendCtx = document.getElementById('trendChart').getContext('2d');
-    if(trendChartInstance) trendChartInstance.destroy();
-
-    if(rows.length === 0){
-      document.getElementById('noHistoryHint').style.display = 'block';
-      trendChartInstance = new Chart(trendCtx, { type: 'line', data: { labels: [], datasets: [] } });
-      return;
-    }
-    document.getElementById('noHistoryHint').style.display = 'none';
-
-    trendChartInstance = new Chart(trendCtx, {
-      type: 'line',
-      data: {
-        labels: rows.map(r => r.date),
-        datasets: [
-          { label: 'เข้าระบบ LMS รวม', data: rows.map(r => r.lmsTotal), borderColor: '#2F6FE0', backgroundColor: 'rgba(47,111,224,.1)', tension: .25 },
-          { label: 'เป้าน้ำแก๊ส', data: rows.map(r => r.targetTotal), borderColor: '#94A3B8', backgroundColor: 'rgba(148,163,184,.1)', tension: .25 }
-        ]
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } },
-        scales: { y: { beginAtZero: true } }
-      }
-    });
-  }catch(err){
-    document.getElementById('noHistoryHint').style.display = 'block';
-  }
-}
-
 // ---------- แผนอัดบรรจุ (Production Plan) ----------
 let lastActualLms = 0; // เก็บยอดอัดบรรจุจริงล่าสุดไว้เทียบกับแผน
 let lastActualTankCounts = new Array(7).fill(0); // จำนวนถังจริงแต่ละขนาด (เรียงตาม PLAN_TANK_SIZES)
 const PLAN_TANK_SIZES = ['4', '7', '12.5', '15', '15FL', '48', '48LW'];
+
+// สร้างโครงตาราง "อัดบรรจุจริง / แผนอัดบรรจุ / ผลต่าง" ครั้งเดียวตอนโหลดหน้า
+// (ไม่รื้อสร้างใหม่ทุกครั้งที่ข้อมูลอัปเดต เพื่อไม่ให้ช่องกรอกแผนที่ผู้ใช้พิมพ์ไว้ถูกล้างเป็นค่าว่างชั่วขณะ)
+function buildTankTableSkeleton(){
+  document.getElementById('tankCountTable').innerHTML = `
+    <tr><th>ขนาดถัง</th>${PLAN_TANK_SIZES.map(s => `<th>${s}</th>`).join('')}<th>รวม</th></tr>
+    <tr>
+      <td>อัดบรรจุจริง (ใบ)</td>
+      ${PLAN_TANK_SIZES.map((s, i) => `<td id="actualCount_${i}">-</td>`).join('')}
+      <td id="actualCountTotal">-</td>
+    </tr>
+    <tr>
+      <td>แผนอัดบรรจุ (ใบ)</td>
+      ${PLAN_TANK_SIZES.map((s, i) => `<td><input type="number" min="0" step="1" inputmode="numeric" class="plan-count-input" data-idx="${i}" style="width:100%; min-width:44px; border:1px solid var(--line); border-radius:6px; padding:5px 2px; text-align:center; font-family:'IBM Plex Mono',monospace; font-size:12.5px;" placeholder="0"></td>`).join('')}
+      <td></td>
+    </tr>
+    <tr>
+      <td>ผลต่าง (จริง−แผน)</td>
+      ${PLAN_TANK_SIZES.map((s, i) => `<td id="planDiff_${i}" style="font-weight:700; color:var(--ink-soft);">-</td>`).join('')}
+      <td></td>
+    </tr>
+  `;
+  document.querySelectorAll('.plan-count-input').forEach(inp => {
+    inp.addEventListener('input', updatePlanTotalPreview);
+  });
+}
 
 function nominalWeightForSize(size){
   const m = String(size).match(/^[\d.]+/);
@@ -761,7 +705,6 @@ document.getElementById('savePlanBtn').addEventListener('click', async () => {
 });
 
 // ---------- ถังที่มีการสุ่มชั่งน้ำหนัก ----------
-let rwTrendChartInstance = null;
 
 function daysAgoStr(n){
   const d = new Date();
@@ -788,13 +731,8 @@ async function loadRandomWeigh(){
     if(json.totalAll === 0){
       document.getElementById('rwKpiGrid').innerHTML = '';
       document.getElementById('rwSizeTable').innerHTML = '';
-      document.getElementById('rwRecentTable').innerHTML = '';
-      document.getElementById('rwRecentCountBadge').textContent = '0 รายการ';
-      document.getElementById('rwNoDataHint').style.display = 'block';
-      if(rwTrendChartInstance) rwTrendChartInstance.destroy();
       return;
     }
-    document.getElementById('rwNoDataHint').style.display = 'none';
 
     const weightedAvgDiff = json.sizeStats.reduce((s, r) => s + r.avgDiff * r.total, 0) / (json.totalAll || 1);
     const maxDiffAll = Math.max(...json.sizeStats.map(r => r.maxDiff));
@@ -824,42 +762,53 @@ async function loadRandomWeigh(){
         </tr>
       `).join('')}
     `;
+  }catch(err){
+    showMsg('เชื่อมต่อไม่สำเร็จ กรุณาลองใหม่', false);
+    document.getElementById('rwRangeLabel').textContent = 'โหลดข้อมูลไม่สำเร็จ';
+  }
+}
 
-    const rwTrendCtx = document.getElementById('rwTrendChart').getContext('2d');
-    if(rwTrendChartInstance) rwTrendChartInstance.destroy();
-    rwTrendChartInstance = new Chart(rwTrendCtx, {
-      type: 'line',
-      data: {
-        labels: json.trend.map(r => r.date),
-        datasets: [{
-          label: 'ผลต่างเฉลี่ย (Kg.)', data: json.trend.map(r => r.avgDiff),
-          borderColor: '#2F6FE0', backgroundColor: 'rgba(47,111,224,.1)', tension: .25
-        }]
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } },
-        scales: { y: { ticks: { callback: v => v + ' Kg.' } } }
-      }
-    });
+// ---------- แก๊สเข้าวันนี้ (Daily Gas Receipt Report) ----------
+async function loadReceiptSummary(){
+  const dateVal = document.getElementById('viewDate').value || todayStr();
+  document.getElementById('receiptKpiGrid').innerHTML = '';
+  document.getElementById('receiptTable').innerHTML = '<tr><td class="kanban-empty" style="border:none;">กำลังโหลด…</td></tr>';
+  try{
+    const res = await fetch(GAS_URL + '?action=dashboardReceiptSummary&date=' + encodeURIComponent(dateVal));
+    const json = await res.json();
+    if(!json || json.status !== 'ok'){
+      document.getElementById('receiptTable').innerHTML = '<tr><td style="border:none; color:var(--red);">โหลดข้อมูลไม่สำเร็จ</td></tr>';
+      return;
+    }
+    const kpis = [
+      ['แก๊สเข้ารวม', fmtNum(json.totalQty), 'ok', 'Kg.'],
+      ['จำนวนเที่ยว', json.tripCount, '', 'เที่ยว']
+    ];
+    document.getElementById('receiptKpiGrid').innerHTML = kpis.map(k => `
+      <div class="kpi-card">
+        <div class="k">${k[0]}</div>
+        <div class="v ${k[2]}">${k[1]}<span class="unit">${k[3]}</span></div>
+      </div>
+    `).join('');
 
-    document.getElementById('rwRecentCountBadge').textContent = json.recent.length + ' รายการ';
-    document.getElementById('rwRecentTable').innerHTML = `
-      <tr><th>วันที่</th><th>เวลา</th><th>เลขหู</th><th>ขนาด</th><th>น้ำหนักชั่งกลาง</th><th>ผลต่าง</th></tr>
-      ${json.recent.map(r => `
-        <tr style="${Math.abs(r.diff) > 0.5 ? 'background:#FBEBEC;' : ''}">
-          <td>${r.date}</td>
-          <td>${r.time}</td>
-          <td>${r.earTag}</td>
-          <td>${r.size || '-'}</td>
-          <td>${fmtNum(r.weight)}</td>
-          <td style="color:${Math.abs(r.diff) > 0.5 ? 'var(--red)' : (r.diff !== 0 ? 'var(--brass-dark)' : 'inherit')}; font-weight:700;">${r.diff >= 0 ? '+' : ''}${fmtNum(r.diff)}</td>
+    if(json.deliveries.length === 0){
+      document.getElementById('receiptTable').innerHTML = '';
+      return;
+    }
+    document.getElementById('receiptTable').innerHTML = `
+      <tr><th>เวลาลง</th><th>เที่ยวที่</th><th>บริษัทขนส่ง</th><th>ทะเบียนรถ</th><th>ปริมาณ (Kg.)</th></tr>
+      ${json.deliveries.map(d => `
+        <tr>
+          <td>${d.timeDown || '-'}</td>
+          <td>${d.tripNo || '-'}</td>
+          <td>${d.company || '-'}</td>
+          <td>${d.plateNo || '-'}</td>
+          <td>${fmtNum(d.qty)}</td>
         </tr>
       `).join('')}
     `;
   }catch(err){
-    showMsg('เชื่อมต่อไม่สำเร็จ กรุณาลองใหม่', false);
-    document.getElementById('rwRangeLabel').textContent = 'โหลดข้อมูลไม่สำเร็จ';
+    document.getElementById('receiptTable').innerHTML = '<tr><td style="border:none; color:var(--red);">เชื่อมต่อไม่สำเร็จ</td></tr>';
   }
 }
 
@@ -870,25 +819,24 @@ document.getElementById('rwEndDate').addEventListener('change', loadRandomWeigh)
 document.getElementById('randomWeighRefreshBtn').addEventListener('click', loadRandomWeigh);
 
 document.getElementById('viewDate').valueAsDate = new Date();
-document.getElementById('viewDate').addEventListener('change', async () => { await loadSnapshot(); loadProductionPlan(); });
-document.getElementById('refreshBtn').addEventListener('click', async () => {
-  const snapshotPromise = loadSnapshot();
-  loadHistory();
-  await snapshotPromise;
+document.getElementById('viewDate').addEventListener('change', () => { loadSnapshot(); loadProductionPlan(); loadReceiptSummary(); });
+document.getElementById('refreshBtn').addEventListener('click', () => {
+  loadSnapshot();
   loadProductionPlan();
+  loadReceiptSummary();
 });
 
-(async () => {
-  // เริ่มโหลดพร้อมกันทุกส่วนที่ไม่ได้พึ่งพากัน (เร็วกว่ารอทีละอย่างตามลำดับ)
-  const snapshotPromise = loadSnapshot();
-  loadHistory();
-  loadRandomWeigh();
-  await snapshotPromise; // แผนอัดบรรจุต้องรอให้ตารางจากข้อมูลสดถูกสร้างขึ้นก่อน (ใช้ element ร่วมกัน)
-  loadProductionPlan();
-})();
+// สร้างโครงตารางแผนอัดบรรจุครั้งเดียวก่อนเริ่มโหลดข้อมูลใดๆ (แก้ปัญหาช่องกรอกแผนถูกล้างเป็นค่าว่างเวลารีเฟรช)
+buildTankTableSkeleton();
+
+// เริ่มโหลดทุกส่วนพร้อมกัน (เร็วกว่ารอทีละอย่างตามลำดับ) — ทุกฟังก์ชันตอนนี้แค่อัปเดตค่าในตาราง ไม่รื้อสร้าง element ใหม่แล้ว จึงเรียกพร้อมกันได้ปลอดภัย
+loadSnapshot();
+loadProductionPlan();
+loadRandomWeigh();
+loadReceiptSummary();
 
 // รีเฟรชข้อมูลสดอัตโนมัติทุก 3 นาที (ไม่รบกวนช่วงเวลาที่ผู้ใช้กำลังเลือกวันที่ดูอยู่)
-setInterval(() => { loadSnapshot(); }, 3 * 60 * 1000);
+setInterval(() => { loadSnapshot(); loadReceiptSummary(); }, 3 * 60 * 1000);
 </script>
 
 </body>
