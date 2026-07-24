@@ -666,8 +666,10 @@ document.getElementById('status').addEventListener('change', (e) => {
   inBtn.textContent = (e.target.value === 'ออกจากโรงบรรจุ') ? 'ดำเนินการเสร็จ' : 'บันทึกเวลาเข้า';
 });
 
+let gateInSubmitting = false;
 inForm.addEventListener('submit', async (e) => {
   e.preventDefault();
+  if(gateInSubmitting) return; // ป้องกันกดซ้ำระหว่างกำลังบันทึก (สาเหตุที่รายการขึ้นซ้ำ)
   if(!capturesComplete('gatein')){
     showMsg('กรุณาถ่ายรูปให้ครบ 3 รูปตอนรถเข้า', false);
     return;
@@ -687,6 +689,7 @@ inForm.addEventListener('submit', async (e) => {
     inImg2: captureImages['gatein'][1],
     inImg3: captureImages['gatein'][2]
   };
+  gateInSubmitting = true;
   inBtn.disabled = true;
   inBtn.textContent = 'กำลังบันทึก…';
   try{
@@ -718,6 +721,7 @@ inForm.addEventListener('submit', async (e) => {
   }catch(err){
     showMsg('เชื่อมต่อไม่สำเร็จ กรุณาลองใหม่', false);
   }finally{
+    gateInSubmitting = false;
     inBtn.disabled = false;
     inBtn.textContent = 'บันทึกเวลาเข้า';
   }
@@ -779,6 +783,7 @@ async function loadOpenList(){
 
 
 async function recordGateOut(btn){
+  if(btn.disabled) return; // ป้องกันกดซ้ำระหว่างกำลังบันทึก (สาเหตุที่รายการขึ้นซ้ำ)
   const rowId = btn.dataset.rowid;
   const key = `out_${rowId}`;
   if(!capturesComplete(key)){

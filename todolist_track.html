@@ -288,25 +288,26 @@
   .point-diff.bad{ background:#FBEBEC; color:var(--red); }
   .point-photo{ max-width:110px; }
 
-  /* To Do List */
-  .kanban-scroll{ display:flex; gap:12px; overflow-x:auto; padding-bottom:6px; margin:0 -14px; padding-left:14px; padding-right:14px; }
-  .kanban-col{
-    flex:0 0 85%; max-width:340px; background:var(--paper); border-radius:12px;
-    padding:12px; scroll-snap-align:start;
-  }
-  .kanban-scroll{ scroll-snap-type:x mandatory; }
-  .kanban-col-header{
+  /* To Do List — จัดกลุ่มตามสถานะแบบเรียงต่อกันในแนวตั้ง (เลื่อนขึ้น-ลงตามปกติ ไม่ต้องปาดซ้าย-ขวา) */
+  .status-group{ background:var(--paper); border-radius:12px; padding:12px; margin-bottom:12px; }
+  .status-group:last-child{ margin-bottom:0; }
+  .status-group-header{
     display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;
+    cursor:pointer; user-select:none;
   }
-  .kanban-col-title{
-    font-family:'Archivo',sans-serif; font-weight:800; font-size:13px; color:var(--ink);
-    display:flex; align-items:center; gap:6px;
+  .status-group-title{
+    font-family:'Archivo',sans-serif; font-weight:800; font-size:13.5px; color:var(--ink);
+    display:flex; align-items:center; gap:7px;
   }
-  .kanban-col-dot{ width:9px; height:9px; border-radius:50%; }
-  .kanban-col-count{
+  .status-group-dot{ width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+  .status-group-right{ display:flex; align-items:center; gap:8px; }
+  .status-group-count{
     font-family:'IBM Plex Mono',monospace; font-size:11px; font-weight:700; color:var(--ink-soft);
     background:#fff; padding:2px 8px; border-radius:10px;
   }
+  .status-group-chevron{ transition:transform .2s ease; color:var(--ink-soft); font-size:11px; }
+  .status-group.collapsed .status-group-chevron{ transform:rotate(-90deg); }
+  .status-group.collapsed .status-group-body{ display:none; }
   .task-card{
     background:#fff; border:1px solid var(--line); border-radius:10px; padding:12px;
     margin-bottom:10px; box-shadow:0 1px 2px rgba(0,0,0,.04);
@@ -389,7 +390,7 @@
       </div>
     </div>
     <p class="sub-desc" id="filterResultLabel" style="margin-bottom:12px;"></p>
-    <div class="kanban-scroll" id="kanbanBoard"></div>
+    <div id="kanbanBoard"></div>
   </div>
 </main>
 
@@ -488,20 +489,32 @@ function renderBoard(){
 
   board.innerHTML = STATUS_COLUMNS.map(col => {
     const colTasks = tasks.filter(t => t.status === col.key && (!filterVal || t.assignee === filterVal));
-    const cardsHtml = colTasks.length ? colTasks.map(t => taskCardHtml(t, col.key)).join('') : `<div class="kanban-empty">ไม่มีงานในคอลัมน์นี้</div>`;
+    const cardsHtml = colTasks.length ? colTasks.map(t => taskCardHtml(t, col.key)).join('') : `<div class="kanban-empty">ไม่มีงานในสถานะนี้</div>`;
+    // ย่อกลุ่ม "เสร็จแล้ว" ไว้เป็นค่าเริ่มต้น ลดความรก ส่วนรอดำเนินการ/กำลังทำเปิดไว้ให้เห็นทันที
+    const collapsedClass = col.key === 'done' ? ' collapsed' : '';
     return `
-      <div class="kanban-col">
-        <div class="kanban-col-header">
-          <div class="kanban-col-title"><span class="kanban-col-dot" style="background:${col.dot};"></span>${col.title}</div>
-          <div class="kanban-col-count">${colTasks.length}</div>
+      <div class="status-group${collapsedClass}" data-status="${col.key}">
+        <div class="status-group-header" data-toggle="${col.key}">
+          <div class="status-group-title"><span class="status-group-dot" style="background:${col.dot};"></span>${col.title}</div>
+          <div class="status-group-right">
+            <span class="status-group-count">${colTasks.length}</span>
+            <span class="status-group-chevron">▾</span>
+          </div>
         </div>
-        ${cardsHtml}
+        <div class="status-group-body">${cardsHtml}</div>
       </div>
     `;
   }).join('');
 
+  board.querySelectorAll('[data-toggle]').forEach(header => {
+    header.addEventListener('click', () => {
+      header.closest('.status-group').classList.toggle('collapsed');
+    });
+  });
+
   board.querySelectorAll('[data-action]').forEach(btn => {
-    btn.addEventListener('click', async () => {
+    btn.addEventListener('click', async (ev) => {
+      ev.stopPropagation();
       const id = btn.dataset.id;
       const action = btn.dataset.action;
       const task = tasks.find(t => t.id === id);
