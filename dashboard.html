@@ -314,13 +314,23 @@
   .dash-table tr:last-child td{ font-weight:700; background:var(--paper); }
 
   /* โหมด Desktop: จอกว้างขึ้น ใช้พื้นที่แนวนอนให้คุ้มค่า แทนที่จะแคบเหมือนมือถือ */
+  .col-left, .col-right{ display:contents; }
   @media (min-width:900px){
-    main{ max-width:1100px; padding:0 24px; }
-    .kpi-grid{ grid-template-columns:repeat(5, 1fr); }
-    .card{ padding:20px 22px; }
+    main{
+      max-width:1300px; padding:0 24px;
+      display:flex; flex-wrap:wrap; gap:16px; align-items:flex-start;
+    }
+    .col-left, .col-right{
+      display:flex; flex-direction:column; gap:16px;
+      flex:1 1 calc(50% - 8px); min-width:0;
+    }
+    .card{ margin-top:0; padding:20px 22px; }
+    .kpi-grid{ grid-template-columns:repeat(2, 1fr); }
+    .card.wide{ flex:1 1 100%; }
   }
   @media (min-width:1300px){
-    main{ max-width:1300px; }
+    main{ max-width:1500px; }
+    .kpi-grid{ grid-template-columns:repeat(4, 1fr); }
   }
 </style>
 </head>
@@ -358,6 +368,7 @@
 <main>
   <div id="msg" class="msg"></div>
 
+  <div class="col-left">
   <div class="card">
     <h2>เลือกดูข้อมูล <button type="button" class="refresh" id="refreshBtn">รีเฟรช ↻</button></h2>
     <div class="field">
@@ -400,7 +411,9 @@
     <div id="reconNotFoundHint" class="empty-hint" style="display:none;">ยังไม่มีข้อมูล Gas reconciliation ของวันที่เลือก</div>
     <div class="kpi-grid" id="reconKpiGrid"></div>
   </div>
+  </div><!-- /col-left -->
 
+  <div class="col-right">
   <div class="card">
     <h2>พนักงานหน้าลานที่มาทำงาน</h2>
     <p class="sub-desc">รายชื่อพนักงานส่วนงานหน้าลานที่ลงเวลาเข้างานของวันที่เลือกไว้ด้านบน</p>
@@ -421,8 +434,9 @@
     <p class="sub-desc">ผลต่างเฉลี่ย/สูงสุด/ต่ำสุด แยกตามขนาดถัง เพื่อดูว่าขนาดไหนคลาดเคลื่อนมากผิดปกติ</p>
     <table class="dash-table" id="rwSizeTable"></table>
   </div>
+  </div><!-- /col-right -->
 
-  <div class="card">
+  <div class="card wide">
     <h2>วิธีตั้งค่าบันทึกอัตโนมัติทุกวัน (ทำครั้งเดียว)</h2>
     <ol style="font-size:12.5px; color:var(--ink-soft); padding-left:20px; margin:0; line-height:1.8;">
       <li>เปิด Apps Script ของโปรเจกต์นี้</li>
