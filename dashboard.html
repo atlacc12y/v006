@@ -397,7 +397,9 @@
       <table class="dash-table" id="shiftTable"></table>
     </div>
   </div>
+  </div><!-- /col-left -->
 
+  <div class="col-right">
   <div class="card">
     <h2>แก๊สเข้าวันนี้ (Daily Gas Receipt Report)</h2>
     <p class="sub-desc">สรุปยอดแก๊สที่รับเข้าของวันที่เลือกไว้ด้านบน (จากใบรับก๊าซแต่ละเที่ยว)</p>
@@ -407,13 +409,19 @@
 
   <div class="card">
     <h2>Gas reconciliation</h2>
-    <p class="sub-desc">ข้อมูลกระทบยอดก๊าซของวันที่เลือกไว้ด้านบน (จากแบบฟอร์ม Gas reconciliation)</p>
+    <p class="sub-desc">ข้อมูลกระทบยอดก๊าซของ<b>วันก่อนหน้า</b>วันที่เลือกไว้ด้านบน 1 วัน (T-1) เนื่องจากข้อมูลของวันนั้นมักยังไม่สมบูรณ์จนกว่าจะถึงวันถัดไป</p>
+    <p class="sub-desc" id="reconDateLabel" style="font-weight:700; color:var(--ink);">กำลังโหลด…</p>
     <div id="reconNotFoundHint" class="empty-hint" style="display:none;">ยังไม่มีข้อมูล Gas reconciliation ของวันที่เลือก</div>
     <div class="kpi-grid" id="reconKpiGrid"></div>
   </div>
-  </div><!-- /col-left -->
 
-  <div class="col-right">
+  <div class="card">
+    <h2>สุ่มชั่งน้ำหนัก แยกตามขนาดถัง <button type="button" class="refresh" id="randomWeighRefreshBtn">รีเฟรช ↻</button></h2>
+    <p class="sub-desc" id="rwRangeLabel">กำลังโหลดข้อมูล…</p>
+    <p class="sub-desc">ผลต่างเฉลี่ย/สูงสุด/ต่ำสุด แยกตามขนาดถัง เพื่อดูว่าขนาดไหนคลาดเคลื่อนมากผิดปกติ</p>
+    <table class="dash-table" id="rwSizeTable"></table>
+  </div>
+
   <div class="card">
     <h2>พนักงานหน้าลานที่มาทำงาน</h2>
     <p class="sub-desc">รายชื่อพนักงานส่วนงานหน้าลานที่ลงเวลาเข้างานของวันที่เลือกไว้ด้านบน</p>
@@ -421,18 +429,6 @@
     <div class="table-wrap" style="overflow-x:auto;">
       <table class="dash-table" id="yardAttendanceTable"></table>
     </div>
-  </div>
-
-  <div class="card">
-    <h2>ถังที่มีการสุ่มชั่งน้ำหนัก <button type="button" class="refresh" id="randomWeighRefreshBtn">รีเฟรช ↻</button></h2>
-    <p class="sub-desc" id="rwRangeLabel">กำลังโหลดข้อมูล…</p>
-    <div class="kpi-grid" id="rwKpiGrid"></div>
-  </div>
-
-  <div class="card">
-    <h2>สุ่มชั่งน้ำหนัก แยกตามขนาดถัง</h2>
-    <p class="sub-desc">ผลต่างเฉลี่ย/สูงสุด/ต่ำสุด แยกตามขนาดถัง เพื่อดูว่าขนาดไหนคลาดเคลื่อนมากผิดปกติ</p>
-    <table class="dash-table" id="rwSizeTable"></table>
   </div>
   </div><!-- /col-right -->
 
@@ -485,6 +481,12 @@ function showMsg(text, ok){
 
 
 // ---------- โหลด "สรุปวันนี้" ----------
+
+function fmtThaiDateShort(dateStr){
+  if(!dateStr) return '-';
+  const [y, m, d] = dateStr.split('-');
+  return `${d}/${m}/${y}`;
+}
 
 function fmtNum(n){
   return (isFinite(n) ? n : 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -742,26 +744,9 @@ async function loadRandomWeigh(){
     document.getElementById('rwRangeLabel').textContent = `วันที่ ${dateVal} — พบ ${json.totalAll.toLocaleString()} รายการ`;
 
     if(json.totalAll === 0){
-      document.getElementById('rwKpiGrid').innerHTML = '';
       document.getElementById('rwSizeTable').innerHTML = '';
       return;
     }
-
-    const weightedAvgDiff = json.sizeStats.reduce((s, r) => s + r.avgDiff * r.total, 0) / (json.totalAll || 1);
-    const maxDiffAll = Math.max(...json.sizeStats.map(r => r.maxDiff));
-    const minDiffAll = Math.min(...json.sizeStats.map(r => r.minDiff));
-    const rwKpis = [
-      ['จำนวนที่สุ่มชั่งทั้งหมด', json.totalAll.toLocaleString(), '', 'ครั้ง'],
-      ['ผลต่างเฉลี่ย (ถ่วงน้ำหนัก)', (weightedAvgDiff >= 0 ? '+' : '') + fmtNum(weightedAvgDiff), Math.abs(weightedAvgDiff) < 0.2 ? 'ok' : 'bad', 'Kg.'],
-      ['ผลต่างสูงสุด (เกิน)', '+' + fmtNum(maxDiffAll), '', 'Kg.'],
-      ['ผลต่างต่ำสุด (ขาด)', fmtNum(minDiffAll), 'bad', 'Kg.']
-    ];
-    document.getElementById('rwKpiGrid').innerHTML = rwKpis.map(k => `
-      <div class="kpi-card">
-        <div class="k">${k[0]}</div>
-        <div class="v ${k[2]}">${k[1]}<span class="unit">${k[3]}</span></div>
-      </div>
-    `).join('');
 
     document.getElementById('rwSizeTable').innerHTML = `
       <tr><th>ขนาดถัง</th><th>จำนวนที่ชั่ง</th><th>ผลต่างเฉลี่ย</th><th>สูงสุด</th><th>ต่ำสุด</th></tr>
@@ -828,10 +813,17 @@ async function loadReceiptSummary(){
 // ---------- Gas reconciliation ----------
 async function loadReconciliation(){
   const dateVal = document.getElementById('viewDate').value || todayStr();
+  // แสดงข้อมูลของ "วันก่อนหน้า" วันที่เลือกไว้ 1 วัน (T-1) เพราะข้อมูลกระทบยอดของวันปัจจุบันมักยังไม่สมบูรณ์
+  const d = new Date(dateVal + 'T00:00:00');
+  d.setDate(d.getDate() - 1);
+  const pad2 = x => String(x).padStart(2, '0');
+  const t1DateVal = d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+
+  document.getElementById('reconDateLabel').textContent = `แสดงข้อมูลวันที่ ${fmtThaiDateShort(t1DateVal)} (T-1)`;
   document.getElementById('reconKpiGrid').innerHTML = '';
   document.getElementById('reconNotFoundHint').style.display = 'none';
   try{
-    const res = await fetch(GAS_URL + '?action=get&date=' + encodeURIComponent(dateVal));
+    const res = await fetch(GAS_URL + '?action=get&date=' + encodeURIComponent(t1DateVal));
     const json = await res.json();
     if(!json || !json.found){
       document.getElementById('reconNotFoundHint').style.display = 'block';
