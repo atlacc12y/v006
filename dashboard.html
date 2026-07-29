@@ -3,284 +3,921 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
-<title>Dashboard — แนวห้องควบคุม (ตัวอย่างดีไซน์)</title>
+<title>Dashboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;800&family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;800&family=IBM+Plex+Mono:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#0A0E16;
-    --bg-grid:#121826;
+    --paper:#F2F4F7;
+    --paper-2:#E6E9EE;
+    --ink:#1F2937;
+    --ink-soft:#64748B;
+    --brass:#2F6FE0;
+    --brass-dark:#1D4ED8;
+    --green:#2E9C4C;
+    --red:#DC3545;
+    --line:#DFE3E8;
     --panel:#111827;
-    --panel-2:#161F2E;
-    --line:#232E42;
-    --cyan:#22D3EE;
-    --cyan-dim:#0E7490;
-    --green:#34D399;
-    --amber:#FBBF24;
-    --red:#F87171;
-    --ink:#E5E7EB;
-    --ink-soft:#7C8AA0;
-    --ink-dim:#4B5768;
+    --radius:8px;
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
   body{
-    margin:0; background:var(--bg);
+    margin:0; background:var(--paper);
     background-image:
-      linear-gradient(var(--bg-grid) 1px, transparent 1px),
-      linear-gradient(90deg, var(--bg-grid) 1px, transparent 1px);
-    background-size:28px 28px;
+      linear-gradient(var(--paper-2) 1px, transparent 1px),
+      linear-gradient(90deg, var(--paper-2) 1px, transparent 1px);
+    background-size:22px 22px;
     color:var(--ink);
     font-family:'Inter',system-ui,sans-serif;
     min-height:100vh;
     padding-bottom:40px;
   }
-  .topbar{
-    background:linear-gradient(180deg, #0D1420, #0A0E16);
-    border-bottom:1px solid var(--line);
-    color:#fff; display:flex; align-items:center; gap:12px;
-    padding:14px 18px; position:sticky; top:0; z-index:40;
+  header{ padding:22px 18px 10px 62px; }
+  header h1{
+    font-family:'Archivo',sans-serif; font-weight:800;
+    font-size:24px; margin:0 0 6px; letter-spacing:-.01em;
   }
+    .topbar{
+    background:var(--panel); color:#fff; display:flex; align-items:center; gap:12px;
+    padding:12px 16px; position:sticky; top:0; z-index:40;
+  }
+  .topbar-logo{ height:26px; width:auto; display:block; }
   .topbar-title{
     font-family:'Archivo',sans-serif; font-weight:800; font-size:15px;
-    letter-spacing:.02em; color:#fff; flex:1;
+    letter-spacing:-.01em; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   }
-  .live-badge{
-    display:flex; align-items:center; gap:6px; font-family:'IBM Plex Mono',monospace;
-    font-size:10.5px; font-weight:600; color:var(--green); letter-spacing:.08em;
-    border:1px solid var(--green); border-radius:20px; padding:4px 10px;
+  .menu-btn{
+    width:34px; height:34px; border-radius:8px; border:1px solid rgba(255,255,255,.18);
+    background:rgba(255,255,255,.06); display:flex; align-items:center; justify-content:center;
+    cursor:pointer; flex-shrink:0;
   }
-  .live-dot{
-    width:7px; height:7px; border-radius:50%; background:var(--green);
-    box-shadow:0 0 8px var(--green);
-    animation:pulse 1.6s ease-in-out infinite;
+  .menu-btn svg{ width:18px; height:18px; stroke:#fff; }
+  .sidebar-overlay{
+    position:fixed; inset:0; background:rgba(10,14,20,.55); z-index:60;
+    opacity:0; pointer-events:none; transition:opacity .2s ease;
   }
-  @keyframes pulse{
-    0%,100%{ opacity:1; transform:scale(1); }
-    50%{ opacity:.4; transform:scale(.8); }
+  .sidebar-overlay.show{ opacity:1; pointer-events:auto; }
+  .sidebar{
+    position:fixed; top:0; left:0; bottom:0; width:250px; max-width:78vw;
+    background:var(--panel); z-index:70; transform:translateX(-100%);
+    transition:transform .25s ease; box-shadow:3px 0 20px rgba(0,0,0,.35);
+    display:flex; flex-direction:column;
+  }
+  .sidebar.show{ transform:translateX(0); }
+  .sidebar-header{
+    padding:22px 18px; display:flex; align-items:center; gap:10px;
+    border-bottom:1px solid rgba(255,255,255,.08); position:relative;
+  }
+  .sidebar-header img{ height:30px; width:auto; display:block; }
+  .sidebar-header span{
+    color:#fff; font-family:'Archivo',sans-serif; font-weight:800; font-size:12.5px;
+    letter-spacing:.02em; line-height:1.25;
+  }
+  .sidebar-nav{ padding:14px 12px; flex:1; overflow-y:auto; }
+  .sidebar a{
+    display:block; padding:12px 12px; border-radius:8px; margin-bottom:4px;
+    font-family:'Inter',sans-serif; font-weight:600; font-size:14.5px;
+    color:rgba(255,255,255,.72); text-decoration:none; border-left:3px solid transparent;
+  }
+  .sidebar a.active{
+    background:rgba(255,255,255,.08); color:#fff; border-left:3px solid var(--brass);
+    font-weight:700;
+  }
+  .sidebar a:not(.active):active{ background:rgba(255,255,255,.05); }
+  .sidebar-close{
+    position:absolute; top:18px; right:14px; width:26px; height:26px;
+    display:flex; align-items:center; justify-content:center; cursor:pointer;
+    color:rgba(255,255,255,.6); font-size:17px;
+  }
+  .nav-links{ display:flex; gap:14px; flex-wrap:wrap; }
+  .nav-links a{
+    font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--brass-dark);
+    text-decoration:none; font-weight:600; white-space:nowrap;
   }
 
   main{ padding:0 14px; max-width:520px; margin:0 auto; }
-  .col-left, .col-right{ display:contents; }
-  @media (min-width:900px){
-    main{
-      max-width:1500px; padding:0 24px;
-      display:flex; flex-wrap:wrap; gap:14px; align-items:flex-start;
-    }
-    .col-left, .col-right{
-      display:flex; flex-direction:column; gap:14px;
-      flex:1 1 calc(50% - 7px); min-width:0;
-    }
-    .panel{ margin-top:0; }
-    .kpi-grid{ grid-template-columns:repeat(2,1fr) !important; }
-    .panel.wide{ flex:1 1 100%; }
-  }
-  @media (min-width:1300px){
-    .kpi-grid{ grid-template-columns:repeat(4,1fr) !important; }
-  }
 
-  .panel{
-    background:var(--panel); border:1px solid var(--line); border-radius:10px;
-    padding:16px; margin-top:14px; position:relative; overflow:hidden;
+  .card{
+    background:#fff; border:1px solid var(--line); border-radius:var(--radius);
+    padding:16px; margin-bottom:14px;
   }
-  .panel::before{
-    content:''; position:absolute; top:0; left:0; right:0; height:2px;
-    background:linear-gradient(90deg, var(--cyan), transparent 70%);
-    opacity:.6;
-  }
-  .panel-head{
-    display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;
-  }
-  .panel-title{
-    font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:11.5px;
-    letter-spacing:.12em; text-transform:uppercase; color:var(--ink-soft);
-    display:flex; align-items:center; gap:8px;
-  }
-  .panel-title .dot{
-    width:6px; height:6px; border-radius:50%; background:var(--cyan);
-    box-shadow:0 0 6px var(--cyan); flex-shrink:0;
-  }
-  .panel-sub{ font-size:12px; color:var(--ink-dim); margin:-8px 0 14px; }
-  .refresh-btn{
-    background:none; border:1px solid var(--line); color:var(--ink-soft);
-    font-family:'IBM Plex Mono',monospace; font-size:10.5px; padding:4px 10px;
-    border-radius:6px; cursor:pointer;
+  .card h2{
+    font-family:'Archivo',sans-serif; font-size:13px; font-weight:800;
+    text-transform:uppercase; letter-spacing:.08em; color:var(--ink-soft);
+    margin:0 0 12px;
   }
 
   .field{ margin-bottom:12px; }
+  .field:last-child{ margin-bottom:0; }
   .field label{
-    display:block; font-family:'IBM Plex Mono',monospace; font-size:10.5px;
-    letter-spacing:.06em; text-transform:uppercase; color:var(--ink-soft); margin-bottom:6px;
+    display:block; font-size:12.5px; font-weight:600; color:var(--ink-soft);
+    margin-bottom:5px;
   }
-  input[type=date]{
-    width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:8px;
-    background:var(--panel-2); color:var(--ink); font-family:'IBM Plex Mono',monospace;
-    font-size:14px; color-scheme:dark;
+  .row2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+
+  input[type=text], input[type=number], select{
+    width:100%; padding:12px 12px; border:1.5px solid var(--line);
+    border-radius:10px; font-size:16px; font-family:'IBM Plex Mono',monospace;
+    background:#FBFBF9; color:var(--ink);
   }
+  input[type=text]{ font-family:'Inter',sans-serif; font-size:15px; }
+  select{ font-family:'Inter',sans-serif; font-size:14.5px; appearance:none; }
+  input:focus, select:focus{ outline:none; border-color:var(--brass); }
+
+  button.submit{
+    width:100%; padding:15px; border:none; border-radius:12px;
+    background:var(--brass); color:#FFFFFF; font-family:'Archivo',sans-serif;
+    font-weight:800; font-size:15px; letter-spacing:.02em; cursor:pointer;
+    margin-top:4px;
+  }
+  button.submit:active{ background:var(--brass-dark); }
+  button.submit:disabled{ background:#C7D1E0; color:#7C8AA0; }
+
+  .msg{
+    text-align:center; font-size:13px; font-weight:600; padding:10px;
+    border-radius:10px; margin-bottom:14px; display:none;
+  }
+  .msg.show{ display:block; }
+  .msg.ok{ background:#E4F1E7; color:var(--green); }
+  .msg.err{ background:#F6E4E2; color:var(--red); }
+
+  .open-item{
+    border:1px solid var(--line); border-radius:10px; padding:12px;
+    margin-bottom:10px; background:#FBFBF9;
+  }
+  .open-item:last-child{ margin-bottom:0; }
+  .open-item .top{
+    display:flex; justify-content:space-between; align-items:baseline;
+    font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--ink-soft);
+  }
+  .open-item .plate{
+    font-family:'Archivo',sans-serif; font-weight:800; font-size:16px;
+    color:var(--ink); margin:4px 0 2px;
+  }
+  .open-item .meta{ font-size:12.5px; color:var(--ink-soft); margin-bottom:8px; }
+  .out-btn{
+    width:100%; padding:10px; border:none; border-radius:8px;
+    background:var(--panel); color:#8AB4FF; font-family:'Archivo',sans-serif;
+    font-weight:800; font-size:13px; cursor:pointer;
+  }
+  .out-btn:active{ background:#0A0E14; }
+  .out-btn:disabled{ opacity:.5; }
+  .finish-btn{
+    width:100%; padding:10px; border:none; border-radius:8px;
+    background:var(--brass); color:#fff; font-family:'Archivo',sans-serif;
+    font-weight:800; font-size:13px; cursor:pointer;
+  }
+  .finish-btn:active{ background:var(--brass-dark); }
+  .finish-btn:disabled{ opacity:.5; }
+  .delay-input{
+    width:100%; padding:9px 10px; border:1.5px solid var(--line);
+    border-radius:8px; font-size:13.5px; font-family:'Inter',sans-serif;
+    background:#fff; color:var(--ink);
+  }
+  .delay-input:focus{ outline:none; border-color:var(--brass); }
+
+  .entry{
+    padding:10px 0; border-bottom:1px solid var(--line); font-size:12.5px;
+  }
+  .entry:last-child{ border-bottom:none; }
+  .entry .top{ display:flex; justify-content:space-between; font-family:'IBM Plex Mono',monospace; color:var(--ink-soft); margin-bottom:3px; }
+  .entry .plate{ font-weight:700; }
+  .entry .duration{ font-family:'IBM Plex Mono',monospace; font-weight:700; color:var(--brass-dark); }
+  .empty-hint{ color:var(--ink-soft); font-size:13px; text-align:center; padding:8px 0; }
+  .refresh{
+    font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--brass-dark);
+    background:none; border:none; float:right; cursor:pointer; font-weight:600;
+  }
+
+  /* 3-photo capture grid */
+  .imgs3{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
+  .shot{
+    position:relative; aspect-ratio:1/1; border-radius:9px; overflow:hidden;
+    border:1.5px dashed var(--line); background:#FBFBF9;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .shot.filled{ border-style:solid; border-color:var(--brass); }
+  .shot img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .shot input{ position:absolute; inset:0; opacity:0; cursor:pointer; }
+  .shot .hint{
+    display:flex; flex-direction:column; align-items:center; gap:4px;
+    color:var(--ink-soft); font-size:9.5px; font-weight:600;
+    text-transform:uppercase; letter-spacing:.04em; pointer-events:none; text-align:center;
+  }
+  .shot .hint svg{ width:16px; height:16px; stroke:var(--brass-dark); }
+  .shot .clear{
+    position:absolute; top:4px; right:4px; width:18px; height:18px;
+    background:rgba(27,36,29,.72); border-radius:50%; color:#fff;
+    display:flex; align-items:center; justify-content:center; font-size:11px;
+    z-index:2;
+  }
+
+  /* Expandable capture panel inside an open-item */
+  .capture-panel{
+    display:none; margin-top:10px; padding-top:10px; border-top:1px dashed var(--line);
+  }
+  .capture-panel.show{ display:block; }
+  .capture-panel .imgs3{ margin-bottom:10px; }
+  .confirm-btn{
+    width:100%; padding:10px; border:none; border-radius:8px;
+    background:var(--green); color:#fff; font-family:'Archivo',sans-serif;
+    font-weight:800; font-size:13px; cursor:pointer;
+  }
+  .confirm-btn:disabled{ opacity:.5; }
+
+  /* Summary popup modal */
+  .modal-overlay{
+    position:fixed; inset:0; background:rgba(10,14,20,.6); z-index:80;
+    display:none; align-items:flex-end; justify-content:center;
+  }
+  .modal-overlay.show{ display:flex; }
+  .modal-box{
+    background:#fff; border-radius:16px 16px 0 0; padding:20px 18px 24px;
+    width:100%; max-width:520px; max-height:85vh; overflow-y:auto;
+  }
+  .modal-box h3{
+    font-family:'Archivo',sans-serif; font-weight:800; font-size:16px;
+    margin:0 0 14px; color:var(--ink);
+  }
+  .modal-row{ display:flex; justify-content:space-between; font-size:13.5px; padding:6px 0; border-bottom:1px solid var(--line); }
+  .modal-row span:first-child{ color:var(--ink-soft); }
+  .modal-row span:last-child{ font-weight:700; }
+  .modal-imgs{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin:14px 0; }
+  .modal-imgs img{ width:100%; aspect-ratio:1/1; object-fit:cover; border-radius:8px; border:1px solid var(--line); }
+  .line-btn{
+    width:100%; padding:13px; border:none; border-radius:10px;
+    background:#06C755; color:#fff; font-family:'Archivo',sans-serif;
+    font-weight:800; font-size:14.5px; cursor:pointer; margin-top:14px;
+    display:flex; align-items:center; justify-content:center; gap:8px;
+  }
+  .modal-close-btn{
+    width:100%; padding:12px; border:1.5px solid var(--line); border-radius:10px;
+    background:#fff; color:var(--ink-soft); font-family:'Inter',sans-serif;
+    font-weight:700; font-size:13.5px; cursor:pointer; margin-top:8px;
+  }
+
+  .sub-desc{ font-size:11.5px; color:var(--ink-soft); margin:0 0 12px; }
+
+  .save-bar{
+    position:sticky; bottom:0; background:#fff; border-top:1px solid var(--line);
+    padding:12px 14px; margin-top:6px;
+  }
+  button.save-btn{
+    width:100%; max-width:520px; margin:0 auto; display:block; padding:15px; border:none; border-radius:10px;
+    background:var(--green); color:#fff; font-family:'Archivo',sans-serif;
+    font-weight:800; font-size:15px; cursor:pointer;
+  }
+  button.save-btn:active{ background:#237A3B; }
+
+  .point-row{
+    border:1px solid var(--line); border-radius:10px; padding:12px;
+    margin-bottom:10px; background:#FBFBF9;
+  }
+  .point-row:last-child{ margin-bottom:0; }
+  .point-header{
+    display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;
+  }
+  .point-name{
+    font-family:'Archivo',sans-serif; font-weight:800; font-size:14px; color:var(--ink);
+  }
+  .point-diff{
+    font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:13px;
+    padding:2px 8px; border-radius:10px; background:var(--paper-2); color:var(--ink-soft);
+  }
+  .point-diff.ok{ background:#DDF3E1; color:var(--green); }
+  .point-diff.bad{ background:#FBEBEC; color:var(--red); }
+  .point-photo{ max-width:110px; }
 
   .kpi-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-  .kpi{
-    background:var(--panel-2); border:1px solid var(--line); border-radius:8px;
-    padding:12px 14px; position:relative;
+  .kpi-card{
+    background:var(--panel); border-radius:10px; padding:12px 14px;
   }
-  .kpi .k{
-    font-family:'IBM Plex Mono',monospace; font-size:9.5px; letter-spacing:.08em;
-    text-transform:uppercase; color:var(--ink-dim); margin-bottom:6px;
+  .kpi-card .k{
+    font-family:'IBM Plex Mono',monospace; font-size:9.5px; letter-spacing:.06em;
+    text-transform:uppercase; color:#94A3B8; margin-bottom:4px;
   }
-  .kpi .v{
-    font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:22px;
-    color:var(--cyan); text-shadow:0 0 12px rgba(34,211,238,.35);
+  .kpi-card .v{
+    font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:19px; color:#8AB4FF;
   }
-  .kpi .v.ok{ color:var(--green); text-shadow:0 0 12px rgba(52,211,153,.35); }
-  .kpi .v.bad{ color:var(--red); text-shadow:0 0 12px rgba(248,113,113,.35); }
-  .kpi .v.warn{ color:var(--amber); text-shadow:0 0 12px rgba(251,191,36,.35); }
-  .kpi .unit{ font-size:11px; color:var(--ink-dim); font-weight:500; margin-left:4px; }
+  .kpi-card .v.ok{ color:#7FD79A; }
+  .kpi-card .v.bad{ color:#F09488; }
+  .kpi-card .unit{ font-size:11px; color:#94A3B8; font-weight:500; margin-left:3px; }
 
-  .dtable{ width:100%; border-collapse:collapse; font-size:12px; }
-  .dtable th{
-    font-family:'IBM Plex Mono',monospace; background:var(--panel-2); color:var(--ink-soft);
-    font-weight:600; padding:8px; text-align:right; font-size:10px; letter-spacing:.04em;
-    text-transform:uppercase; white-space:nowrap; border-bottom:1px solid var(--line);
+  .dash-table{ width:100%; border-collapse:collapse; font-size:12px; min-width:480px; }
+  .dash-table th{
+    background:var(--paper-2); color:var(--ink-soft); font-weight:700; padding:7px 8px;
+    text-align:right; font-size:11px; white-space:nowrap;
   }
-  .dtable th:first-child{ text-align:left; }
-  .dtable td{
-    padding:8px; border-bottom:1px solid var(--line); text-align:right;
-    font-family:'IBM Plex Mono',monospace; color:var(--ink);
-  }
-  .dtable td:first-child{ text-align:left; font-family:'Inter',sans-serif; color:var(--ink-soft); }
-  .dtable tr:last-child td{ font-weight:700; background:rgba(34,211,238,.05); color:var(--cyan); }
-  .table-wrap{ overflow-x:auto; }
+  .dash-table th:first-child{ text-align:left; }
+  .dash-table td{ padding:7px 8px; border-bottom:1px solid var(--line); text-align:right; font-family:'IBM Plex Mono',monospace; }
+  .dash-table td:first-child{ text-align:left; font-family:'Inter',sans-serif; font-weight:600; }
+  .dash-table tr:last-child td{ font-weight:700; background:var(--paper); }
 
-  .plan-input{
-    width:100%; min-width:44px; border:1px solid var(--cyan-dim); border-radius:6px;
-    padding:5px 2px; text-align:center; font-family:'IBM Plex Mono',monospace;
-    font-size:12.5px; background:rgba(34,211,238,.06); color:var(--cyan);
+  /* โหมด Desktop: จอกว้างขึ้น ใช้พื้นที่แนวนอนให้คุ้มค่า แทนที่จะแคบเหมือนมือถือ */
+  @media (min-width:900px){
+    main{ max-width:1100px; padding:0 24px; }
+    .kpi-grid{ grid-template-columns:repeat(5, 1fr); }
+    .card{ padding:20px 22px; }
   }
-  .save-btn{
-    width:100%; padding:13px; border:1px solid var(--cyan); border-radius:8px;
-    background:rgba(34,211,238,.1); color:var(--cyan); font-family:'IBM Plex Mono',monospace;
-    font-weight:700; font-size:13px; letter-spacing:.05em; text-transform:uppercase;
-    cursor:pointer; margin:12px 0;
-  }
-
-  .status-bar{
-    display:flex; justify-content:space-between; font-family:'IBM Plex Mono',monospace;
-    font-size:10.5px; color:var(--ink-dim); margin-top:6px; letter-spacing:.03em;
+  @media (min-width:1300px){
+    main{ max-width:1300px; }
   }
 </style>
 </head>
 <body>
 
 <div class="topbar">
-  <span class="topbar-title">◈ DASHBOARD — โรงบรรจุก๊าซกบินทร์บุรี</span>
-  <div class="live-badge"><span class="live-dot"></span>LIVE</div>
+  
+  <button class="menu-btn" id="menuBtn" aria-label="เมนู">
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+  </button>
+  
+  <img class="topbar-logo" src="data:image/webp;base64,UklGRmoSAABXRUJQVlA4TF4SAAAv0cAdEE04juA2bmYB/ID+G7ad+Gggov8TwId9n1tGklsUQ3SHPSmJVNqSSl214U1SogKUUoBu3ixF8dpu/dVgGgXor/TI1C6Mv6tEsifdkAC279sTNz+yYBRJkqL0r2xfp4UZXrQkwEzbNlbRVDvHH9CuYRALJvMnDaKj/xOAkpnjMTM41iPHWhuAnkjNt08AZuJQuAjAShzYEJuR8Kl1HOAOMTOD2CMrqKrI1/7/755E2/a19zJH7/04VjnWfAQ+o+Nh8DRc4iHwCI7FHNssObN09N57ccr/9//ve5jJf461edOLO80cYqbQYiDExNkoBwQsEWa30BPYQlCTKD3ChjF0jIW+S4xGCM0aeguGEpAeiDGWHRh6ImIixA5MNiOGXpRj29qyJ/vGk8q9ywQ8QHQ8uEPHCLxkBO7u7u4VlVvl+mb9P6xItl0rvch5O0DTq2fg1HN2scdfzrAkQJJk2tZcPNu2bdu2bdu2bXw/6/vZtvlt27ycAAHBt0NcaPGGFjgFNoFFoA0RyBDwwt9Q4UOa8EL4YfoKLd5QgpZgLhgIigIphoXHwqxwa4OAM3GFFm8KQoDgegxrCm+Ec0Kr8MmcbRGchXhBDV2b8FugFlBGIEeoFipCzVehtRtS8BWyBSHAKewK28Khj/Bc+JgDAlpgFYQFcUFVMBL4VSA8FcKFabN1QkgWpCAtTxgRFoVf4GJIBRGBO8Af4edNwiPhNRQoTzKC+wsChwKEBiFFwJqpQms39jfWYhNuCxeFGScuhl4wGyRoC6L+qIXPwpowIdxIK1CeSAVvoeBFBe0Fl0TzVGjx5ik0CYw5QrtQVxkXg64j+As2kVgoELwFHQEjDAh9DgUBvubnkv2lP0Gq8BV4S6AUKmsJX3AxFEKYkDoAawp2N7sYKeGPMD5EgYCNNzuX7K+LcEWgwusF4RoIifnCSx4TIoScYVj7KcHWxaCmH1EgfPcyN5fsr7TQEwlZ/yfIC/cQ3oKL0Rea12I8YZLwj2ECu4BUECnoZoX6KhD2nGbmkv1FrIkE8BWq3gJcTGELjAqvhOvCwvP9ACIFOUGvxHNol0cKFCEKNpgYgSj4lEUpWA8S5kB4hr6zjHDJB8OjhW47gF34X0FgUkwX1s1L0mR0wwQlEDqEA0FB4dgjVGDx4PLCMUBwxFvRGuISzEru8QC9KMEXHNcV1wjbo4R9rCmcClsAwkaB8kT1qCJHaDErfg4MbhSGACEWnEnCEVbOCAaEfBfDLxQpOBBrTto8j+EDCTA+8Iiw5AQEZn/hvRUgBCLX+A1RJA41JQ4/jOcIFwAhLxgQxPKEd7QRAqtYIaUdlHUxpg8oENIizIhwc6kFlImFqkCawAPQb/EkyxDoBBVoIfSrhFWh3YTcNBC1sNJP5RAa0fZLQtlAcLQCgj6842Koeivsh03IHrsqXghZpiKmnGaPU4VgdY8ViAHBL0aBEFzZdAg7bVCHCfeL+qgQaoFyP0BXeLLWwwqvwMtfqcumqoxw2Ww496CuKpQQ/7aOcLYB+wEMLhNyrdBH2CT9rzae4VWdBA8DBSdXVIhQBmSV0BszpkTWTmHeQNhdrRQpgmXr0sFCr49C4BUMVUt2Cp5DhDFN6/E1iIpSCcORdYAMTx/FzImCusCQOLWiA4FLMGFXM00FQXPOYCsIVxN1GgErlqvW3o1AE2Yko6MV8IO/XvkvrJqSrldwcrGH+a4XHkLLUjAiivKwnDCBL0mw1xOMhaTYKfGAr/enD8QuF7JmK/Z2ZUUwRLXs0lUYFYI027tCpa40zgBmtnsbT+HbNEHD89pAeFloK+3RffbUMYIMJcd2Xd63HwjkcZO2Y3nJXqjvsQFcp2JZ4fzTlFpuhEcWWOF4PP81QCFHgSCht/BjGo9CKdQLcSzE4k0MmLsHeGFW6gkhdF10qDClAW5NhYWegHD++xgUMuqinpf6XvJLWWsQ3MogTPYY8tRagWTJeFvfuk2GXgNCMYOwoh9qjxloPVupAs5xVLUQ435WyE1l8U2qCjoFJxe9EAUetYcorHpnU5ghSNpByKxXci+UfqJnrspg9PCrDRh+ZAQVyLqVyi97QcP/FwaDqdo2WXBY/lDZmuuwYp9mqo/nob7KQ8F/SMi/g7ag8g7LqEhtCYxqgI4Qk9VBKE3p38J6VzmfmDd6ojfcdtfMtDr5HBkToVo+BQR6IK73zF7r9WonQprwR/Eo3INgms4WL4DKbT3glrpjM4cLkQ1nWcEmdKKeu0KnU3nVFYH8MqDIFR6oaBVh2T74Si1K1SeqgpOL+rOG7w4UnIQvtXOsJci81SpsuiCwpCywV+haGzCjDvr9veAwMKTOTek7BuhscYKQUBzo0JedHaACNANqT5kyJQtYeOX1wrSzKVaM81KNP4H+vJsU/FnAPwZoSlWqoHJmWybcAamFVFVXbS/9ruPd7jQSmqwlZCKU2zIf4+o5QLTgNZ3bTuhtT4XGAD6CdegUYdxdVbYu6n09eH4/ZIAvsGXC9OklgIQrOy56CCtW3oH6GgzmvqLicgAQToTWdWNV7GtmUb+SSAWVKkRRcHKRdkYotPEewrN2NuuMf9nRi0Uw8A60t3hCto7R7ocdUZVUBlPzgh6vfyv7oCxQ9kbUPoIQwgdrJKOe1tMIyQ1VfxfwVykIwIM227Hvq/CzW8KCU3+DU0poVerd9TsfhxFCB31bWaeaf52G0Oh+++j9mY8/6knAjbxWzjJ6PYgVGw+7Q6jZUqV7atPD12/DtYXl/To3Y9jWWcXlKXwlIO4RKLlJZ0gvi4ac8TqAuq6m4ORCD64e7gHRJwWxKrOBoM9I0XR6L/V+ID5394QJQK2qvslXbj10cuz07QyeA1CpAWOfB4QXDg3c9zYpDH2F1yKAhs8V50d57tvCe++NGLZjb10he2rgvRBvvQyhC7Vwd4cxvM9MjlX/6gj+KPlfDeChbSpW9LOk7lmvAjrKgpPLNHlyUYBrb+ZlYQdK3c0UzZIX0QqvvDfWAygp1NwR+lyiYHZUUI6u+6yQHqiZn4xyRvuqSzUpQk/fFIT4hSinhZShbXveeTWlzNMs2v7jbpEIL1t1rahxTMLdsi2hOp9j4aVK/rvVMqn4UoIvHL81zlECUWWfZUniOU8KOl6aIr3g5EJ9nIPlU1D6P1MXV8zyQjdRkMXyThtQx2HpjIsSrl8AVFcI5SYN3R9QUeUuCzjnYUBn4zfCN+lk1IlHLblU+a7it4BTcwQKGhUOAQ0dblLR1WFMKkjPuwZ0Eje7abkGYjrptMDSzJmclcCvVQuqyHmKpUKaTt3jxs6/gvv0LwGd+2xumiCtF9oRdbklllyqJo8DvwacmYCCGwuHhoauwpoK75KGLjweMXRHB7tpBjvG67yBhZcq6WMApwX8VhWoCCs8vkNoBOIPnSr2GDr/HG6diGBM4YLfP6AJdVcsjP+DGP63REzDL+QIzssLRrW1vB3tbp2iwrqBc56QRrcN5nAPauHrPEvO9FXwV4nZlwIUpwj8pMdiFdPzFM9sVAlS2QJWZ/p/d6vREza/US7bcShqGjqwsRXSa1cB5tevUcTdI7zSuQoL913g6dUVwF8Afw9o7lm2Q0XReA3XqRB+l9E5/Yv0rzT5qCesG7lsx8F+N957BPnjwurg+4qEdPeWwhGWzsyOTO+9G+i7HO3Cvifz8lTdnrdO1EgBp8opg9pzjCXneWkALg8AhP9CLJ2dqtwailc3qNgxSWE75W/C0XUcUly240D5XHH3Jql5zqTnOnUT1E8KBvkCR4MI9ubWLt7t+jmvhxwMbFg3vOyQHfUH7VqVfm+K4DrR9pyPkDEx4fnRgT57hbdNuj/X3r3JkqbtYoTn657cLzBB1rQJG0IEmw/3pScWnVBXEGvdKQYEwx/Pej13fpXRS7Y6fQSL1xdM3Pdx4JvFA+9dbx+n6mpT2YVoLPzT3Dee7eM38A/AnwPwHR9GzlKRfUTD5/Eq/BQDhRm9XSgDxkWF9z/UxLb6naDUp1tsEPqyMsfSaMzupGtmCAPV6m3M/6TH+x+1DX5jWUwxYa3VbcJrGx2CMnesTyspfAtqlBc0MVngD+8/a1SesPpp0hO3VdpNXrPwBQ9/OL9HjWxBOPnBikH1Gtfg83H9F45Jntt/QylBpf3tjwouI+rbszOj6m4RBPugXLUEdWMsjP93l8VovwxckcDOekALL1VgUcX+yTofpmpG2fW8Vcpdma/WWLM5IeG1Iz0WB6HdnJ2+c2FsI/91Vfzq2bsc5JHwsPA3pwO+2yZ97jkLg5EVvW84GChIxgDFSyZMu3/BuNsWFfVKu777wdTW0G0k2tbvrPnRC23yZjaJEQLHACytvrkuYPdDPSTIEqHbS/FvCfwhMCMBKFlLxdT9Gup1UtFR+AeEoZ+k8nAn3Sti4gtBHs76jzySYEddAc+eaZE9xgW89sy1oT1GYg8oNXfZCwAvveQeij8DwO7PAPbme4Xk22ttdUKv9kvyTmKz1XXvlELtkHFbYVE8y8l3lKs0N6oNsFjIOyBo4D8AMiIB3hfe6VTDwsrvo/675M0taL9TWcU4RehqnYyOUKA8ISr+T2uefqXeWRstzVE3n576XqkKo7yEpTFBrzsGoy8M1RMcfT6fG5dRYkhU6z1ZgIf/9lYAGdkznnxsQfbggxCRGPNJ8z3Hgz7xji1frBq83v3EQPTXX70eeL0dmbFDcnKdKNtvqND0Bzv8nb75aUDuLaj7lBWIFoxDfWrgfgqZwYrQDkKX6q5DGqYmqUj1wapf3LxHru/XnBcjP2RrekNHa04ehhnxWRubhPt4NJnEwZ01nykZDYeXrq89vS20TRz1ZuhGZi9K9GjdvFv4zqzmi3s2tNUsFit8Anb7hsLR+GlpHLzpTeFzlxmQPXpNzpQFjpbNj0dC28QSt8UuFXzWB4dMbAUwy6lyzm6D8V1zdD7KRL2lyl4FQXYNn4Wq8LPON/kvbt4jxx5A6QWkQTNwniTYvxbQZhfqcddh3N4YdbMom47jo+KqSSsUVY/qBO9wexxYuQzAA6gz7j0CCfEQmgEeHuSl6VRKQj9VGJ6ooHGohsxVKsp4uTmuesn+Mh7RsbhuAOoNnwIHV7dLsXnBANQRfor41Tq2kTflgM0LAqt6uXmlcG3bwVWw8nuRWBqn4PY4FfnoB+4R4uLdOMHHtfLDOgMnb8NiZ+HxHZ+CjwRrlfEDb7hx7q714woR8ORSrDhf1VxwDbGCrXSi2+Z5tSvNiABCbdbQ93/BCvnpzd22j2JmukrFIQAex61gi9Gh5mLLEo7gtu+r+dHDkfg/A9EhkBJizD5wOMrPb7DIOQqDgl2KRbVw65vdjaUp7sBmIKsyukub3lnBn6x8EKgWQZfItAarjPD6hjadqkJINDwTzfR1KW6ea3ph0N4dV437NCqc/wX/vdsPPNfQqQYuJn4zkDfmWwTHKyS2dI6oBEyu9i1C5VxCZvM+wK4iqPrvDJ/vF8glcft2nVnmg23wON4OQCBWKmJC/2Xu/zsG52SbkEfg0eg0YRyg88YixPFvQ75IEAw0/yEmNBXCp5Gs6T2uCPnvnn7/Sj0M+vE3YkaXDIGFTF0F0MJRJKT8TzvcFS2IGByFKRVwK2BQgTwZOJ7QfJhXBER/pR7NV+oCGBTKMKldgckF8oRo8AjAcA9Xc/9KE16pKRKDzzY0K559YPZn9rZ3Ao7iriVwnfqzvKf8h8BgUhKmdeJTIPxvz0pfICLWVaJXnvEmbKf+hsJgtD/mNaUaILxM4zmAwPxt1it2SonLOY+QnPI/KAzmYGoFha1AWkJkaYAubYVeKw1444w31M+/BIfRfk5zg+CfAtgiyUDbqnNlK4QvPGU+oRcdgjrnKQQGHT5OTO7HTQECAgJHavBIvlV4aMx92tw651+E+MWlwZ3yNygM5gzG/H7yIkDPlQXKE0JY7o2ynPe+kRsD4eOexboJOk/ln3s78HOb4C84HRRGq/bGDAvsHwNUv/LEnI7XuaObS3514JQSuPAI+OmtwZx3HSmGb9iJOfa1o40KK1CePP56hZk/2Xlnc/dslfaU/4HzboKLd8FcvAvhtK/IMVy1QShmOSJCA1G2JTf824hXf7UR3b9MV+I/B3FL8EkF/RmfUJz+AeHsl/6eewfuvOtFnP28rKfMhxTjgZnZmGjhbW+FK69ogbmO9Q51JYGYdBTT7Yzb4nSFiI5CI6Z8Uq01/QQGqwQK83HHMe29qwl2Hwgm9S1omJr6vVzMfmmBY7nAWF2g8McjJ2JpbGwo38Y0" alt="Atlas Energy">
+  <span class="topbar-title">Dashboard</span>
 </div>
 
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <img src="data:image/webp;base64,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" alt="Atlas Energy">
+    <span>ATLAS ENERGY<br>LPG Management</span>
+    <div class="sidebar-close" id="sidebarClose">✕</div>
+  </div>
+  <div class="sidebar-nav">
+    <a href="index.html">Gas reconciliation</a>
+    <a href="receiptpage.html">Daily Gas Receipt Report</a>
+    <a href="gatepage.html">Gate to Gate</a>
+    <a href="fm009page.html">ตรวจสอบเครื่องชั่ง (FM-009)</a>
+    <a href="scaletest.html">ทดสอบตราชั่งอัดบรรจุ</a>
+    <a href="dashboard.html" class="active">Dashboard</a>
+    <a href="todolist_assign.html">มอบหมายงาน</a>
+    <a href="todolist_track.html">ติดตามงาน</a>
+  </div>
+</nav>
+
 <main>
+  <div id="msg" class="msg"></div>
 
-  <div class="col-left">
-  <div class="panel">
-    <div class="panel-head">
-      <div class="panel-title"><span class="dot"></span>เลือกดูข้อมูล</div>
-      <button class="refresh-btn">↻ REFRESH</button>
-    </div>
+  <div class="card">
+    <h2>เลือกดูข้อมูล <button type="button" class="refresh" id="refreshBtn">รีเฟรช ↻</button></h2>
     <div class="field">
-      <label>วันที่ต้องการดู</label>
-      <input type="date" value="2026-07-27">
+      <label for="viewDate">วันที่ต้องการดู</label>
+      <input type="date" id="viewDate">
     </div>
-    <div class="status-bar"><span>ข้อมูลสด ณ วันที่ 27/07/2026</span><span>อัปเดตล่าสุด 08:42:11</span></div>
+    <p class="sub-desc" id="snapshotDateLabel" style="margin-top:8px;">กำลังโหลดข้อมูล…</p>
+    <div style="overflow-x:auto;">
+      <table class="dash-table" id="tankCountTable" style="margin-bottom:12px; min-width:620px;"></table>
+    </div>
+    <div class="sub-desc" style="text-align:right; font-weight:700; color:var(--ink); margin-bottom:10px;" id="planTotalPreview">ยอดน้ำแก๊สรวมจากแผน: 0.00 Kg.</div>
+    <button type="button" class="save-btn" id="savePlanBtn" style="max-width:none; margin-bottom:12px;">บันทึกแผนอัดบรรจุ</button>
+    <div class="kpi-grid" id="kpiGrid"></div>
+  </div>
 
-    <div class="table-wrap" style="margin-top:14px;">
-      <table class="dtable" style="min-width:620px;">
-        <tr><th>ขนาดถัง</th><th>4</th><th>7</th><th>12.5</th><th>15</th><th>15FL</th><th>48</th><th>48LW</th><th>รวม</th></tr>
-        <tr><td>อัดบรรจุจริง (ใบ)</td><td>12</td><td>4</td><td>0</td><td>210</td><td>18</td><td>254</td><td>42</td><td>540</td></tr>
-        <tr><td>แผนอัดบรรจุ (ใบ)</td>
-          <td><input class="plan-input" value="40"></td><td><input class="plan-input" value="70"></td>
-          <td><input class="plan-input" value="0"></td><td><input class="plan-input" value="500"></td>
-          <td><input class="plan-input" value="50"></td><td><input class="plan-input" value="260"></td>
-          <td><input class="plan-input" value="45"></td><td></td>
-        </tr>
-        <tr><td>ผลต่าง (จริง−แผน)</td><td style="color:var(--red);">-28</td><td style="color:var(--red);">-66</td>
-          <td style="color:var(--ink-dim);">-</td><td style="color:var(--red);">-290</td>
-          <td style="color:var(--red);">-32</td><td style="color:var(--red);">-6</td>
-          <td style="color:var(--red);">-3</td><td></td>
-        </tr>
-      </table>
-    </div>
-    <div style="text-align:right; font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--ink-soft); margin-top:10px;">
-      ยอดน้ำแก๊สรวมจากแผน: <span style="color:var(--cyan); font-weight:700;">14,208.00 Kg.</span>
-    </div>
-    <button class="save-btn">💾 บันทึกแผนอัดบรรจุ</button>
+  <div class="card">
+    <h2>แผนอัดบรรจุ</h2>
+    <p class="sub-desc">วางแผนเป็นจำนวนถังแต่ละขนาดในตารางด้านบน (แถว "แผนอัดบรรจุ") ระบบจะคำนวณยอดน้ำแก๊สรวมให้อัตโนมัติ และเทียบกับยอดอัดบรรจุจริง (เข้าระบบ LMS) ให้ทันที</p>
+    <div class="kpi-grid" id="planKpiGrid"></div>
+  </div>
 
-    <div class="kpi-grid">
-      <div class="kpi"><div class="k">เข้าระบบ LMS รวม</div><div class="v ok">13,668.10<span class="unit">Kg.</span></div></div>
-      <div class="kpi"><div class="k">เทียบกับน้ำแก๊ส (เป้า)</div><div class="v">14,208.00<span class="unit">Kg.</span></div></div>
-      <div class="kpi"><div class="k">ส่วนต่าง</div><div class="v bad">-539.90<span class="unit">Kg.</span></div></div>
-      <div class="kpi"><div class="k">รวมถังทั้งหมด</div><div class="v">540<span class="unit">ถัง</span></div></div>
+  <div class="card">
+    <h2>แยกตามกะ</h2>
+    <p class="sub-desc" id="shiftTableNote">น้ำแก๊สที่รับ / จำนวนถัง / Gain ของแต่ละกะ</p>
+    <div style="overflow-x:auto;">
+      <table class="dash-table" id="shiftTable"></table>
     </div>
   </div>
 
-  <div class="panel">
-    <div class="panel-head"><div class="panel-title"><span class="dot" style="background:var(--green); box-shadow:0 0 6px var(--green);"></span>แยกตามกะ</div></div>
-    <div class="table-wrap">
-      <table class="dtable">
-        <tr><th>กะ</th><th>รับน้ำแก๊ส (Kg.)</th><th>จำนวนถัง</th><th>Gain (Kg.)</th></tr>
-        <tr><td>R1</td><td>2,140.50</td><td>85</td><td>12.20</td></tr>
-        <tr><td>R2</td><td>1,980.00</td><td>79</td><td>8.40</td></tr>
-        <tr><td>R3</td><td>2,310.60</td><td>92</td><td>15.10</td></tr>
-        <tr><td>6เดี่ยว.เช้า</td><td>1,540.00</td><td>61</td><td>6.30</td></tr>
-        <tr><td>7เดี่ยว.บ่าย</td><td>1,780.00</td><td>71</td><td>9.00</td></tr>
-        <tr><td>รวมทั้งหมด</td><td>13,668.10</td><td>540</td><td>50.90</td></tr>
-      </table>
-    </div>
+  <div class="card">
+    <h2>แก๊สเข้าวันนี้ (Daily Gas Receipt Report)</h2>
+    <p class="sub-desc">สรุปยอดแก๊สที่รับเข้าของวันที่เลือกไว้ด้านบน (จากใบรับก๊าซแต่ละเที่ยว)</p>
+    <div class="kpi-grid" id="receiptKpiGrid"></div>
+    <table class="dash-table" id="receiptTable" style="margin-top:10px;"></table>
   </div>
-  </div><!-- /col-left -->
 
-  <div class="col-right">
-  <div class="panel">
-    <div class="panel-head"><div class="panel-title"><span class="dot" style="background:var(--amber); box-shadow:0 0 6px var(--amber);"></span>แก๊สเข้าวันนี้ · Daily Receipt</div></div>
-    <div class="kpi-grid">
-      <div class="kpi"><div class="k">แก๊สเข้ารวม</div><div class="v ok">13,630.00<span class="unit">Kg.</span></div></div>
-      <div class="kpi"><div class="k">จำนวนเที่ยว</div><div class="v">1<span class="unit">เที่ยว</span></div></div>
-    </div>
-    <div class="table-wrap" style="margin-top:12px;">
-      <table class="dtable">
-        <tr><th>เวลาลง</th><th>เที่ยวที่</th><th>บริษัทขนส่ง</th><th>ทะเบียนรถ</th><th>ปริมาณ (Kg.)</th></tr>
-        <tr><td>10:20:00</td><td>1</td><td>Sc</td><td>74-1615</td><td>13,630.00</td></tr>
-      </table>
+  <div class="card">
+    <h2>Gas reconciliation</h2>
+    <p class="sub-desc">ข้อมูลกระทบยอดก๊าซของวันที่เลือกไว้ด้านบน (จากแบบฟอร์ม Gas reconciliation)</p>
+    <div id="reconNotFoundHint" class="empty-hint" style="display:none;">ยังไม่มีข้อมูล Gas reconciliation ของวันที่เลือก</div>
+    <div class="kpi-grid" id="reconKpiGrid"></div>
+  </div>
+
+  <div class="card">
+    <h2>พนักงานหน้าลานที่มาทำงาน</h2>
+    <p class="sub-desc">รายชื่อพนักงานส่วนงานหน้าลานที่ลงเวลาเข้างานของวันที่เลือกไว้ด้านบน</p>
+    <div id="yardEmptyHint" class="empty-hint" style="display:none;">ไม่มีพนักงานหน้าลานลงเวลาในวันที่เลือก</div>
+    <div class="table-wrap" style="overflow-x:auto;">
+      <table class="dash-table" id="yardAttendanceTable"></table>
     </div>
   </div>
 
-  <div class="panel">
-    <div class="panel-head">
-      <div class="panel-title"><span class="dot" style="background:var(--cyan);"></span>ถังที่มีการสุ่มชั่งน้ำหนัก</div>
-      <button class="refresh-btn">↻ REFRESH</button>
-    </div>
-    <div class="status-bar" style="margin-bottom:12px;"><span>ช่วงวันที่ 20/07 – 27/07 — พบ 891 รายการ</span></div>
-    <div class="kpi-grid">
-      <div class="kpi"><div class="k">จำนวนที่สุ่มชั่งทั้งหมด</div><div class="v">891<span class="unit">ครั้ง</span></div></div>
-      <div class="kpi"><div class="k">ผลต่างเฉลี่ย</div><div class="v ok">+0.03<span class="unit">Kg.</span></div></div>
-      <div class="kpi"><div class="k">ผลต่างสูงสุด</div><div class="v">+0.30<span class="unit">Kg.</span></div></div>
-      <div class="kpi"><div class="k">ผลต่างต่ำสุด</div><div class="v bad">-7.00<span class="unit">Kg.</span></div></div>
-    </div>
-    <div class="table-wrap" style="margin-top:12px;">
-      <table class="dtable">
-        <tr><th>ขนาดถัง</th><th>จำนวนที่ชั่ง</th><th>ผลต่างเฉลี่ย</th><th>สูงสุด</th><th>ต่ำสุด</th></tr>
-        <tr><td>4Kg.</td><td>38</td><td style="color:var(--red);">-0.15</td><td>+0.10</td><td style="color:var(--red);">-4.00</td></tr>
-        <tr><td>15Kg.</td><td>610</td><td style="color:var(--green);">+0.01</td><td>+0.30</td><td>-0.20</td></tr>
-        <tr><td>48Kg.</td><td>214</td><td style="color:var(--green);">+0.02</td><td>+0.20</td><td>-0.30</td></tr>
-      </table>
-    </div>
-  </div>
-  </div><!-- /col-right -->
-
-  <div class="panel wide" style="border-color:var(--cyan-dim);">
-    <div class="panel-head"><div class="panel-title"><span class="dot"></span>System Setup Note</div></div>
-    <p style="font-size:12px; color:var(--ink-dim); line-height:1.7; margin:0;">
-      ⚙ ต้องตั้ง Time-driven Trigger ให้เรียก <span style="color:var(--cyan);">logDailyDashboardSnapshot</span> ทุกคืน (23:00–24:00) เพื่อให้ดูข้อมูลย้อนหลังได้
-    </p>
+  <div class="card">
+    <h2>ถังที่มีการสุ่มชั่งน้ำหนัก <button type="button" class="refresh" id="randomWeighRefreshBtn">รีเฟรช ↻</button></h2>
+    <p class="sub-desc" id="rwRangeLabel">กำลังโหลดข้อมูล…</p>
+    <div class="kpi-grid" id="rwKpiGrid"></div>
   </div>
 
+  <div class="card">
+    <h2>สุ่มชั่งน้ำหนัก แยกตามขนาดถัง</h2>
+    <p class="sub-desc">ผลต่างเฉลี่ย/สูงสุด/ต่ำสุด แยกตามขนาดถัง เพื่อดูว่าขนาดไหนคลาดเคลื่อนมากผิดปกติ</p>
+    <table class="dash-table" id="rwSizeTable"></table>
+  </div>
+
+  <div class="card">
+    <h2>วิธีตั้งค่าบันทึกอัตโนมัติทุกวัน (ทำครั้งเดียว)</h2>
+    <ol style="font-size:12.5px; color:var(--ink-soft); padding-left:20px; margin:0; line-height:1.8;">
+      <li>เปิด Apps Script ของโปรเจกต์นี้</li>
+      <li>คลิกไอคอนรูปนาฬิกา <b>"Triggers"</b> ที่เมนูซ้าย</li>
+      <li>กด <b>"+ Add Trigger"</b> มุมขวาล่าง</li>
+      <li>ช่อง "Choose which function to run" เลือก <b>logDailyDashboardSnapshot</b></li>
+      <li>ช่อง "Select event source" เลือก <b>Time-driven</b></li>
+      <li>ช่อง "Select type of time based trigger" เลือก <b>Day timer</b></li>
+      <li>เลือกช่วงเวลา (แนะนำ <b>23:00 to 24:00</b> น. เพื่อเก็บตัวเลขสรุปตอนปลายวัน) แล้วกด <b>Save</b></li>
+    </ol>
+  </div>
 </main>
+
+<script>
+// โหมด standalone: เข้าผ่านลิงก์ที่มี ?standalone=1 จะซ่อนเมนู/แถบข้าง (ใช้แทน server-side templating เดิม)
+const isStandalone = new URLSearchParams(location.search).get('standalone') === '1';
+if(isStandalone){
+  document.addEventListener('DOMContentLoaded', () => {
+    const mb = document.getElementById('menuBtn');
+    const sb = document.getElementById('sidebar');
+    const so = document.getElementById('sidebarOverlay');
+    if(mb) mb.style.display = 'none';
+    if(sb) sb.remove();
+    if(so) so.remove();
+  });
+}
+
+const menuBtn = document.getElementById('menuBtn');
+const sidebar = document.getElementById('sidebar');
+const sidebarOverlay = document.getElementById('sidebarOverlay');
+const sidebarClose = document.getElementById('sidebarClose');
+function openSidebar(){ if(sidebar) sidebar.classList.add('show'); if(sidebarOverlay) sidebarOverlay.classList.add('show'); }
+function closeSidebar(){ if(sidebar) sidebar.classList.remove('show'); if(sidebarOverlay) sidebarOverlay.classList.remove('show'); }
+if(menuBtn) menuBtn.addEventListener('click', openSidebar);
+if(sidebarOverlay) sidebarOverlay.addEventListener('click', closeSidebar);
+if(sidebarClose) sidebarClose.addEventListener('click', closeSidebar);
+
+const GAS_URL = "https://script.google.com/macros/s/AKfycbzFwNJc2PqCmZwNLBRo5guB1KUxsS4GFEttPNuSGMvDISZg6hNAumQaJO-1SneZlOCR6g/exec";
+
+const msgEl = document.getElementById('msg');
+function showMsg(text, ok){
+  msgEl.textContent = text;
+  msgEl.className = 'msg show ' + (ok ? 'ok' : 'err');
+  setTimeout(()=>{ msgEl.className = 'msg'; }, 4000);
+}
+
+
+// ---------- โหลด "สรุปวันนี้" ----------
+
+function fmtNum(n){
+  return (isFinite(n) ? n : 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+
+function todayStr(){
+  const d = new Date();
+  const pad2 = n => String(n).padStart(2, '0');
+  return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+}
+
+async function loadSnapshot(){
+  const viewDateEl = document.getElementById('viewDate');
+  const selectedDate = viewDateEl.value || todayStr();
+  const isToday = selectedDate === todayStr();
+
+  document.getElementById('snapshotDateLabel').textContent = 'กำลังโหลดข้อมูล…';
+  try{
+    const url = isToday
+      ? GAS_URL + '?action=dashboardSnapshot'
+      : GAS_URL + '?action=dashboardDay&date=' + encodeURIComponent(selectedDate);
+    const res = await fetch(url);
+    const json = await res.json();
+
+    if(!json || json.status !== 'ok'){
+      showMsg('โหลดข้อมูลไม่สำเร็จ: ' + (json && json.message ? json.message : 'ไม่ทราบสาเหตุ'), false);
+      document.getElementById('snapshotDateLabel').textContent = 'โหลดข้อมูลไม่สำเร็จ';
+      return;
+    }
+    if(!isToday && json.found === false){
+      document.getElementById('snapshotDateLabel').textContent = `ยังไม่มีข้อมูลที่บันทึกไว้ของวันที่ ${selectedDate} (ระบบบันทึกอัตโนมัติทุกคืน เริ่มนับตั้งแต่วันที่ตั้งค่าไว้เป็นต้นไป)`;
+      document.getElementById('kpiGrid').innerHTML = '';
+      document.getElementById('shiftTable').innerHTML = '';
+      lastActualLms = 0;
+      lastActualTankCounts = new Array(PLAN_TANK_SIZES.length).fill(0);
+      PLAN_TANK_SIZES.forEach((s, i) => {
+        const cell = document.getElementById(`actualCount_${i}`);
+        if(cell) cell.textContent = '-';
+      });
+      const totalCell = document.getElementById('actualCountTotal');
+      if(totalCell) totalCell.textContent = '-';
+      updatePlanTotalPreview();
+      return;
+    }
+
+    document.getElementById('snapshotDateLabel').textContent =
+      (isToday ? 'ข้อมูลสด ณ วันที่ ' : 'ข้อมูลที่บันทึกไว้ของวันที่ ') + (json.dateLabel || selectedDate);
+
+    lastActualLms = json.lmsTotal.total;
+    lastActualTankCounts = json.totalTanks.bySize;
+
+    const diff = json.lmsTotal.total - json.targetTotal.total;
+    const kpis = [
+      ['เข้าระบบ LMS รวม', fmtNum(json.lmsTotal.total), 'ok', 'Kg.'],
+      ['เทียบกับน้ำแก๊ส (เป้า)', fmtNum(json.targetTotal.total), '', 'Kg.'],
+      ['ส่วนต่าง', (diff >= 0 ? '+' : '') + fmtNum(diff), (Math.abs(diff) < 1 ? 'ok' : 'bad'), 'Kg.'],
+      ['รวมถังทั้งหมด', fmtNum(json.totalTanks.total).replace(/\.00$/, ''), '', 'ถัง'],
+      ['น้ำแก๊สค้างถัง (Gain) รวม', fmtNum(json.gainTotal.total), '', 'Kg.']
+    ];
+    document.getElementById('kpiGrid').innerHTML = kpis.map(k => `
+      <div class="kpi-card">
+        <div class="k">${k[0]}</div>
+        <div class="v ${k[2]}">${k[1]}<span class="unit">${k[3]}</span></div>
+      </div>
+    `).join('');
+
+    // อัปเดตแค่ค่าในแถว "อัดบรรจุจริง" ของตาราง — ไม่รื้อสร้างตารางใหม่ทั้งหมด
+    // (เดิมรื้อสร้างทุกครั้งที่โหลดข้อมูล ทำให้ช่องกรอกแผนอัดบรรจุที่ผู้ใช้พิมพ์ไว้ถูกล้างเป็นค่าว่างชั่วขณะ ดูเหมือนขึ้นเป็น 0)
+    json.totalTanks.bySize.forEach((v, i) => {
+      const cell = document.getElementById(`actualCount_${i}`);
+      if(cell) cell.textContent = fmtNum(v).replace(/\.00$/, '');
+    });
+    const totalCell = document.getElementById('actualCountTotal');
+    if(totalCell) totalCell.textContent = fmtNum(json.totalTanks.total).replace(/\.00$/, '');
+    updatePlanTotalPreview();
+
+    // ตารางแยกตามกะ (มีเฉพาะข้อมูลวันนี้ ข้อมูลย้อนหลังไม่มีรายละเอียดต่อกะ)
+    const shiftTableNote = document.getElementById('shiftTableNote');
+    if(json.shiftsReceived && json.shiftsReceived.length){
+      shiftTableNote.textContent = 'น้ำแก๊สที่รับ / จำนวนถัง / Gain ของแต่ละกะ';
+      const shiftRows = json.shiftsReceived.map((s, i) => {
+        const tankRow = json.shiftsTankCount[i];
+        const gainRow = json.shiftsGain[i];
+        return `<tr>
+          <td>${s.name}</td>
+          <td>${fmtNum(s.total)}</td>
+          <td>${fmtNum(tankRow.total).replace(/\.00$/, '')}</td>
+          <td>${fmtNum(gainRow.total)}</td>
+        </tr>`;
+      }).join('');
+      document.getElementById('shiftTable').innerHTML = `
+        <tr><th>กะ</th><th>รับน้ำแก๊ส (Kg.)</th><th>จำนวนถัง</th><th>Gain (Kg.)</th></tr>
+        ${shiftRows}
+        <tr>
+          <td>รวมทั้งหมด</td>
+          <td>${fmtNum(json.lmsTotal.total)}</td>
+          <td>${fmtNum(json.totalTanks.total).replace(/\.00$/, '')}</td>
+          <td>${fmtNum(json.gainTotal.total)}</td>
+        </tr>
+      `;
+    } else {
+      shiftTableNote.textContent = 'ข้อมูลย้อนหลังไม่มีรายละเอียดแยกตามกะ (มีเฉพาะยอดรวม) — ดูรายละเอียดต่อกะได้เฉพาะข้อมูลของวันนี้';
+      document.getElementById('shiftTable').innerHTML = `
+        <tr><th>รายการ</th><th>รวม (Kg. / ถัง)</th></tr>
+        <tr><td>เข้าระบบ LMS รวม</td><td>${fmtNum(json.lmsTotal.total)} Kg.</td></tr>
+        <tr><td>รวมถังทั้งหมด</td><td>${fmtNum(json.totalTanks.total).replace(/\.00$/, '')} ถัง</td></tr>
+        <tr><td>Gain น้ำแก๊สรวม</td><td>${fmtNum(json.gainTotal.total)} Kg.</td></tr>
+      `;
+    }
+  }catch(err){
+    showMsg('เชื่อมต่อไม่สำเร็จ กรุณาลองใหม่', false);
+    document.getElementById('snapshotDateLabel').textContent = 'โหลดข้อมูลไม่สำเร็จ';
+  }
+}
+
+// ---------- โหลดแนวโน้มย้อนหลัง ----------
+// ---------- แผนอัดบรรจุ (Production Plan) ----------
+let lastActualLms = 0; // เก็บยอดอัดบรรจุจริงล่าสุดไว้เทียบกับแผน
+let lastActualTankCounts = new Array(7).fill(0); // จำนวนถังจริงแต่ละขนาด (เรียงตาม PLAN_TANK_SIZES)
+const PLAN_TANK_SIZES = ['4', '7', '12.5', '15', '15FL', '48', '48LW'];
+
+// สร้างโครงตาราง "อัดบรรจุจริง / แผนอัดบรรจุ / ผลต่าง" ครั้งเดียวตอนโหลดหน้า
+// (ไม่รื้อสร้างใหม่ทุกครั้งที่ข้อมูลอัปเดต เพื่อไม่ให้ช่องกรอกแผนที่ผู้ใช้พิมพ์ไว้ถูกล้างเป็นค่าว่างชั่วขณะ)
+function buildTankTableSkeleton(){
+  document.getElementById('tankCountTable').innerHTML = `
+    <tr><th>ขนาดถัง</th>${PLAN_TANK_SIZES.map(s => `<th>${s}</th>`).join('')}<th>รวม</th></tr>
+    <tr>
+      <td>อัดบรรจุจริง (ใบ)</td>
+      ${PLAN_TANK_SIZES.map((s, i) => `<td id="actualCount_${i}">-</td>`).join('')}
+      <td id="actualCountTotal">-</td>
+    </tr>
+    <tr>
+      <td>แผนอัดบรรจุ (ใบ)</td>
+      ${PLAN_TANK_SIZES.map((s, i) => `<td><input type="number" min="0" step="1" inputmode="numeric" class="plan-count-input" data-idx="${i}" style="width:100%; min-width:44px; border:1px solid var(--line); border-radius:6px; padding:5px 2px; text-align:center; font-family:'IBM Plex Mono',monospace; font-size:12.5px;" placeholder="0"></td>`).join('')}
+      <td></td>
+    </tr>
+    <tr>
+      <td>ผลต่าง (จริง−แผน)</td>
+      ${PLAN_TANK_SIZES.map((s, i) => `<td id="planDiff_${i}" style="font-weight:700; color:var(--ink-soft);">-</td>`).join('')}
+      <td></td>
+    </tr>
+  `;
+  document.querySelectorAll('.plan-count-input').forEach(inp => {
+    inp.addEventListener('input', updatePlanTotalPreview);
+  });
+}
+
+function nominalWeightForSize(size){
+  const m = String(size).match(/^[\d.]+/);
+  return m ? parseFloat(m[0]) : 0;
+}
+
+function updatePlanTotalPreview(){
+  let total = 0;
+  PLAN_TANK_SIZES.forEach((size, idx) => {
+    const inp = document.querySelector(`.plan-count-input[data-idx="${idx}"]`);
+    const planCount = inp ? (parseFloat(inp.value) || 0) : 0;
+    const actualCount = lastActualTankCounts[idx] || 0;
+    const diffCount = actualCount - planCount;
+
+    total += planCount * nominalWeightForSize(size);
+
+    const diffCell = document.getElementById(`planDiff_${idx}`);
+    if(diffCell){
+      const hasPlan = inp && inp.value !== '';
+      diffCell.textContent = hasPlan ? ((diffCount >= 0 ? '+' : '') + fmtNum(diffCount).replace(/\.00$/, '')) : '-';
+      diffCell.style.color = !hasPlan ? 'var(--ink-soft)' : (diffCount >= 0 ? 'var(--green)' : 'var(--red)');
+    }
+  });
+  document.getElementById('planTotalPreview').textContent = 'ยอดน้ำแก๊สรวมจากแผน: ' + fmtNum(total) + ' Kg.';
+  return total;
+}
+document.querySelectorAll('.plan-count-input').forEach(inp => {
+  inp.addEventListener('input', updatePlanTotalPreview);
+});
+
+function renderPlanKpi(planTotal){
+  const diff = lastActualLms - (planTotal || 0);
+  const kpis = [
+    ['ยอดอัดบรรจุจริง', fmtNum(lastActualLms), '', 'Kg.'],
+    ['แผนอัดบรรจุ (รวม)', planTotal === null ? 'ยังไม่ตั้งแผน' : fmtNum(planTotal), '', planTotal === null ? '' : 'Kg.'],
+    ['ส่วนต่าง (จริง−แผน)', planTotal === null ? '-' : ((diff >= 0 ? '+' : '') + fmtNum(diff)), planTotal === null ? '' : (diff >= 0 ? 'ok' : 'bad'), planTotal === null ? '' : 'Kg.']
+  ];
+  document.getElementById('planKpiGrid').innerHTML = kpis.map(k => `
+    <div class="kpi-card">
+      <div class="k">${k[0]}</div>
+      <div class="v ${k[2]}">${k[1]}<span class="unit">${k[3]}</span></div>
+    </div>
+  `).join('');
+}
+
+async function loadProductionPlan(){
+  const dateVal = document.getElementById('viewDate').value || todayStr();
+  try{
+    const res = await fetch(GAS_URL + '?action=productionPlanGet&date=' + encodeURIComponent(dateVal));
+    const json = await res.json();
+    const counts = (json && json.status === 'ok' && json.found) ? json.counts : null;
+    document.querySelectorAll('.plan-count-input').forEach(inp => {
+      const idx = parseInt(inp.dataset.idx, 10);
+      inp.value = counts ? (counts[idx] || '') : '';
+    });
+    const total = updatePlanTotalPreview();
+    renderPlanKpi(counts ? total : null);
+  }catch(err){
+    renderPlanKpi(null);
+  }
+}
+
+document.getElementById('savePlanBtn').addEventListener('click', async () => {
+  const dateVal = document.getElementById('viewDate').value || todayStr();
+  const counts = PLAN_TANK_SIZES.map((s, i) => {
+    const inp = document.querySelector(`.plan-count-input[data-idx="${i}"]`);
+    return parseFloat(inp.value) || 0;
+  });
+  if(counts.every(c => c === 0)){
+    showMsg('กรุณากรอกจำนวนถังอย่างน้อย 1 ขนาดก่อนบันทึก', false);
+    return;
+  }
+  const btn = document.getElementById('savePlanBtn');
+  btn.disabled = true;
+  btn.textContent = 'กำลังบันทึก…';
+  try{
+    const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ form: 'productionPlan', date: dateVal, counts: counts }) });
+    const json = await res.json();
+    if(json && json.status === 'ok'){
+      showMsg('บันทึกแผนอัดบรรจุสำเร็จ ✓', true);
+      renderPlanKpi(json.total);
+    } else {
+      showMsg('บันทึกไม่สำเร็จ: ' + (json && json.message ? json.message : 'ไม่ทราบสาเหตุ'), false);
+    }
+  }catch(err){
+    showMsg('เชื่อมต่อไม่สำเร็จ กรุณาลองใหม่', false);
+  }finally{
+    btn.disabled = false;
+    btn.textContent = 'บันทึกแผนอัดบรรจุ';
+  }
+});
+
+// ---------- ถังที่มีการสุ่มชั่งน้ำหนัก ----------
+
+async function loadRandomWeigh(){
+  const dateVal = document.getElementById('viewDate').value || todayStr();
+  const startVal = dateVal, endVal = dateVal;
+  document.getElementById('rwRangeLabel').textContent = 'กำลังโหลดข้อมูล…';
+  try{
+    const res = await fetch(GAS_URL + '?action=randomWeighGet&startDate=' + encodeURIComponent(startVal) + '&endDate=' + encodeURIComponent(endVal));
+    const json = await res.json();
+    if(!json || json.status !== 'ok'){
+      showMsg('โหลดข้อมูลสุ่มชั่งไม่สำเร็จ: ' + (json && json.message ? json.message : 'ไม่ทราบสาเหตุ'), false);
+      document.getElementById('rwRangeLabel').textContent = 'โหลดข้อมูลไม่สำเร็จ';
+      return;
+    }
+
+    document.getElementById('rwRangeLabel').textContent = `วันที่ ${dateVal} — พบ ${json.totalAll.toLocaleString()} รายการ`;
+
+    if(json.totalAll === 0){
+      document.getElementById('rwKpiGrid').innerHTML = '';
+      document.getElementById('rwSizeTable').innerHTML = '';
+      return;
+    }
+
+    const weightedAvgDiff = json.sizeStats.reduce((s, r) => s + r.avgDiff * r.total, 0) / (json.totalAll || 1);
+    const maxDiffAll = Math.max(...json.sizeStats.map(r => r.maxDiff));
+    const minDiffAll = Math.min(...json.sizeStats.map(r => r.minDiff));
+    const rwKpis = [
+      ['จำนวนที่สุ่มชั่งทั้งหมด', json.totalAll.toLocaleString(), '', 'ครั้ง'],
+      ['ผลต่างเฉลี่ย (ถ่วงน้ำหนัก)', (weightedAvgDiff >= 0 ? '+' : '') + fmtNum(weightedAvgDiff), Math.abs(weightedAvgDiff) < 0.2 ? 'ok' : 'bad', 'Kg.'],
+      ['ผลต่างสูงสุด (เกิน)', '+' + fmtNum(maxDiffAll), '', 'Kg.'],
+      ['ผลต่างต่ำสุด (ขาด)', fmtNum(minDiffAll), 'bad', 'Kg.']
+    ];
+    document.getElementById('rwKpiGrid').innerHTML = rwKpis.map(k => `
+      <div class="kpi-card">
+        <div class="k">${k[0]}</div>
+        <div class="v ${k[2]}">${k[1]}<span class="unit">${k[3]}</span></div>
+      </div>
+    `).join('');
+
+    document.getElementById('rwSizeTable').innerHTML = `
+      <tr><th>ขนาดถัง</th><th>จำนวนที่ชั่ง</th><th>ผลต่างเฉลี่ย</th><th>สูงสุด</th><th>ต่ำสุด</th></tr>
+      ${json.sizeStats.map(r => `
+        <tr>
+          <td>${r.size || '-'}</td>
+          <td>${r.total.toLocaleString()}</td>
+          <td style="color:${Math.abs(r.avgDiff) > 0.2 ? 'var(--red)' : 'inherit'}; font-weight:700;">${r.avgDiff >= 0 ? '+' : ''}${fmtNum(r.avgDiff)}</td>
+          <td style="color:var(--brass-dark);">+${fmtNum(r.maxDiff)}</td>
+          <td style="color:var(--red);">${fmtNum(r.minDiff)}</td>
+        </tr>
+      `).join('')}
+    `;
+  }catch(err){
+    showMsg('เชื่อมต่อไม่สำเร็จ กรุณาลองใหม่', false);
+    document.getElementById('rwRangeLabel').textContent = 'โหลดข้อมูลไม่สำเร็จ';
+  }
+}
+
+// ---------- แก๊สเข้าวันนี้ (Daily Gas Receipt Report) ----------
+async function loadReceiptSummary(){
+  const dateVal = document.getElementById('viewDate').value || todayStr();
+  document.getElementById('receiptKpiGrid').innerHTML = '';
+  document.getElementById('receiptTable').innerHTML = '<tr><td class="kanban-empty" style="border:none;">กำลังโหลด…</td></tr>';
+  try{
+    const res = await fetch(GAS_URL + '?action=dashboardReceiptSummary&date=' + encodeURIComponent(dateVal));
+    const json = await res.json();
+    if(!json || json.status !== 'ok'){
+      document.getElementById('receiptTable').innerHTML = '<tr><td style="border:none; color:var(--red);">โหลดข้อมูลไม่สำเร็จ</td></tr>';
+      return;
+    }
+    const kpis = [
+      ['แก๊สเข้ารวม', fmtNum(json.totalQty), 'ok', 'Kg.'],
+      ['จำนวนเที่ยว', json.tripCount, '', 'เที่ยว']
+    ];
+    document.getElementById('receiptKpiGrid').innerHTML = kpis.map(k => `
+      <div class="kpi-card">
+        <div class="k">${k[0]}</div>
+        <div class="v ${k[2]}">${k[1]}<span class="unit">${k[3]}</span></div>
+      </div>
+    `).join('');
+
+    if(json.deliveries.length === 0){
+      document.getElementById('receiptTable').innerHTML = '';
+      return;
+    }
+    document.getElementById('receiptTable').innerHTML = `
+      <tr><th>เวลาลง</th><th>เที่ยวที่</th><th>บริษัทขนส่ง</th><th>ทะเบียนรถ</th><th>ปริมาณ (Kg.)</th></tr>
+      ${json.deliveries.map(d => `
+        <tr>
+          <td>${d.timeDown || '-'}</td>
+          <td>${d.tripNo || '-'}</td>
+          <td>${d.company || '-'}</td>
+          <td>${d.plateNo || '-'}</td>
+          <td>${fmtNum(d.qty)}</td>
+        </tr>
+      `).join('')}
+    `;
+  }catch(err){
+    document.getElementById('receiptTable').innerHTML = '<tr><td style="border:none; color:var(--red);">เชื่อมต่อไม่สำเร็จ</td></tr>';
+  }
+}
+
+// ---------- Gas reconciliation ----------
+async function loadReconciliation(){
+  const dateVal = document.getElementById('viewDate').value || todayStr();
+  document.getElementById('reconKpiGrid').innerHTML = '';
+  document.getElementById('reconNotFoundHint').style.display = 'none';
+  try{
+    const res = await fetch(GAS_URL + '?action=get&date=' + encodeURIComponent(dateVal));
+    const json = await res.json();
+    if(!json || !json.found){
+      document.getElementById('reconNotFoundHint').style.display = 'block';
+      return;
+    }
+    const gainLoss = json.gainLoss === '' ? null : json.gainLoss;
+    const kpis = [
+      ['% Bult 1', fmtNum(json.bult1).replace(/\.00$/, ''), '', '%'],
+      ['% Bult 2', fmtNum(json.bult2).replace(/\.00$/, ''), '', '%'],
+      ['Weight Bult 1', fmtNum(json.weight1), '', 'Kg.'],
+      ['Weight Bult 2', fmtNum(json.weight2), '', 'Kg.'],
+      ['Total Weight', fmtNum(json.total), 'ok', 'Kg.'],
+      ['Gain/Loss', gainLoss === null ? 'ยังไม่กรอก LMS' : ((gainLoss >= 0 ? '+' : '') + fmtNum(gainLoss)), gainLoss === null ? '' : (Math.abs(gainLoss) < 1 ? 'ok' : 'bad'), gainLoss === null ? '' : 'Kg.']
+    ];
+    document.getElementById('reconKpiGrid').innerHTML = kpis.map(k => `
+      <div class="kpi-card">
+        <div class="k">${k[0]}</div>
+        <div class="v ${k[2]}">${k[1]}<span class="unit">${k[3]}</span></div>
+      </div>
+    `).join('');
+  }catch(err){
+    document.getElementById('reconNotFoundHint').style.display = 'block';
+    document.getElementById('reconNotFoundHint').textContent = 'โหลดข้อมูลไม่สำเร็จ กรุณาลองใหม่';
+  }
+}
+
+// ---------- พนักงานหน้าลานที่มาทำงาน ----------
+async function loadYardAttendance(){
+  const dateVal = document.getElementById('viewDate').value || todayStr();
+  const table = document.getElementById('yardAttendanceTable');
+  const emptyHint = document.getElementById('yardEmptyHint');
+  emptyHint.style.display = 'none';
+  table.innerHTML = '<tr><td class="kanban-empty" style="border:none;">กำลังโหลด…</td></tr>';
+  try{
+    const res = await fetch(GAS_URL + '?action=yardAttendanceGet&date=' + encodeURIComponent(dateVal));
+    const json = await res.json();
+    if(!json || json.status !== 'ok'){
+      table.innerHTML = '';
+      emptyHint.style.display = 'block';
+      emptyHint.textContent = 'โหลดข้อมูลไม่สำเร็จ: ' + (json && json.message ? json.message : 'ไม่ทราบสาเหตุ');
+      return;
+    }
+    if(json.employees.length === 0){
+      table.innerHTML = '';
+      emptyHint.style.display = 'block';
+      emptyHint.textContent = 'ไม่มีพนักงานหน้าลานลงเวลาในวันที่เลือก';
+      return;
+    }
+    table.innerHTML = `
+      <tr><th>ชื่อ</th><th>เวลาเข้า</th><th>เวลาออก</th><th>รวมเวลาทำงาน</th></tr>
+      ${json.employees.map(e => `
+        <tr>
+          <td>${e.name || '-'}</td>
+          <td>${e.timeIn || '-'}</td>
+          <td>${e.timeOut || '-'}</td>
+          <td>${e.totalTime || '-'}</td>
+        </tr>
+      `).join('')}
+    `;
+  }catch(err){
+    table.innerHTML = '';
+    emptyHint.style.display = 'block';
+    emptyHint.textContent = 'เชื่อมต่อไม่สำเร็จ กรุณาลองใหม่';
+  }
+}
+
+document.getElementById('randomWeighRefreshBtn').addEventListener('click', loadRandomWeigh);
+
+document.getElementById('viewDate').valueAsDate = new Date();
+document.getElementById('viewDate').addEventListener('change', () => {
+  loadSnapshot();
+  loadProductionPlan();
+  loadReceiptSummary();
+  loadReconciliation();
+  loadYardAttendance();
+  loadRandomWeigh();
+});
+document.getElementById('refreshBtn').addEventListener('click', () => {
+  loadSnapshot();
+  loadProductionPlan();
+  loadReceiptSummary();
+  loadReconciliation();
+  loadYardAttendance();
+  loadRandomWeigh();
+});
+
+// สร้างโครงตารางแผนอัดบรรจุครั้งเดียวก่อนเริ่มโหลดข้อมูลใดๆ (แก้ปัญหาช่องกรอกแผนถูกล้างเป็นค่าว่างเวลารีเฟรช)
+buildTankTableSkeleton();
+
+// เริ่มโหลดทุกส่วนพร้อมกัน (เร็วกว่ารอทีละอย่างตามลำดับ) — ทุกฟังก์ชันตอนนี้แค่อัปเดตค่าในตาราง ไม่รื้อสร้าง element ใหม่แล้ว จึงเรียกพร้อมกันได้ปลอดภัย
+loadSnapshot();
+loadProductionPlan();
+loadRandomWeigh();
+loadReceiptSummary();
+loadReconciliation();
+loadYardAttendance();
+
+// รีเฟรชข้อมูลสดอัตโนมัติทุก 3 นาที (ไม่รบกวนช่วงเวลาที่ผู้ใช้กำลังเลือกวันที่ดูอยู่)
+setInterval(() => { loadSnapshot(); loadReceiptSummary(); }, 3 * 60 * 1000);
+</script>
 
 </body>
 </html>
