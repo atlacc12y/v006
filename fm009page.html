@@ -655,6 +655,22 @@ const tankNoInput = document.getElementById('tankNoInput');
 const qrOverlay = document.getElementById('qrOverlay');
 let html5QrCode = null;
 
+// สแกน QR แล้วได้ URL เต็ม (เช่น https://atlas-lms.pt.co.th/gastank-information/HCT5396311418
+// หรือ http://tha.tl3.org/1860284465) — ตัดเอาแค่ส่วนท้ายสุดหลัง "/" มาใช้เป็นหมายเลขถัง
+// ถ้าค่าที่สแกนได้ไม่ใช่ URL (เผื่อ QR บางถังเข้ารหัสเป็นข้อความธรรมดา) จะคืนค่าเดิมโดยไม่ตัดอะไร
+function extractTankNoFromScan(decodedText){
+  const text = (decodedText || '').trim();
+  if(!text) return text;
+  try{
+    const url = new URL(text);
+    const segments = url.pathname.split('/').filter(s => s.length > 0);
+    if(segments.length > 0) return segments[segments.length - 1];
+    return text;
+  }catch(e){
+    return text; // ไม่ใช่ URL ที่ถูกต้อง ใช้ค่าดิบตามที่สแกนได้
+  }
+}
+
 function startQrScanner(){
   qrOverlay.classList.add('show');
   html5QrCode = new Html5Qrcode('qrReaderBox');
@@ -662,7 +678,7 @@ function startQrScanner(){
     { facingMode: 'environment' },
     { fps: 10, qrbox: { width: 240, height: 240 } },
     (decodedText) => {
-      tankNoInput.value = decodedText;
+      tankNoInput.value = extractTankNoFromScan(decodedText);
       stopQrScanner();
     },
     () => {} // เฟรมที่สแกนไม่เจอ QR — เพิกเฉย ลองเฟรมถัดไป
