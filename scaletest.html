@@ -802,7 +802,7 @@ saveBtn.addEventListener('click', async () => {
         ['ผู้ทำการทดสอบ', testerName || '(ยังไม่ระบุ)']
       ].concat(items.map(it => [it.pointName, it.weight.toFixed(2) + ' Kg. (' + (it.diff >= 0 ? '+' : '') + it.diff.toFixed(2) + ')']));
 
-      showSummary('บันทึกผลทดสอบตราชั่งสำเร็จ', summaryRowsData, json.images, localImgsForShare.slice(0, 9));
+      showSummary('บันทึกผลทดสอบตราชั่งสำเร็จ', summaryRowsData, json.images, localImgsForShare);
     } else {
       showMsg('บันทึกไม่สำเร็จ: ' + (json && json.message ? json.message : 'ไม่ทราบสาเหตุ'), false);
     }
