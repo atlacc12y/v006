@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<title>Reject Cylinder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;800&family=IBM+Plex+Mono:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<style>
+  :root{
+    --paper:#F2F4F7;
+    --paper-2:#E6E9EE;
+    --ink:#1F2937;
+    --ink-soft:#64748B;
+    --brass:#2F6FE0;
+    --brass-dark:#1D4ED8;
+    --green:#2E9C4C;
+    --red:#DC3545;
+    --amber:#B45309;
+    --line:#DFE3E8;
+    --panel:#111827;
+    --radius:8px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  body{
+    margin:0; background:var(--paper);
+    background-image:
+      linear-gradient(var(--paper-2) 1px, transparent 1px),
+      linear-gradient(90deg, var(--paper-2) 1px, transparent 1px);
+    background-size:22px 22px;
+    color:var(--ink);
+    font-family:'Inter',system-ui,sans-serif;
+    min-height:100vh;
+    padding-bottom:50px;
+  }
+  .topbar{
+    background:var(--panel); color:#fff; display:flex; align-items:center; gap:12px;
+    padding:12px 16px; position:sticky; top:0; z-index:40;
+  }
+  .topbar-logo{ height:26px; width:auto; display:block; }
+  .topbar-title{
+    font-family:'Archivo',sans-serif; font-weight:800; font-size:14.5px;
+    letter-spacing:-.01em; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .topbar-sub{ font-size:10.5px; color:#94A3B8; font-family:'IBM Plex Mono',monospace; }
+  .menu-btn{
+    width:34px; height:34px; border-radius:8px; border:1px solid rgba(255,255,255,.18);
+    background:rgba(255,255,255,.06); display:flex; align-items:center; justify-content:center;
+    cursor:pointer; flex-shrink:0;
+  }
+  .menu-btn svg{ width:18px; height:18px; stroke:#fff; }
+  .sidebar-overlay{
+    position:fixed; inset:0; background:rgba(10,14,20,.55); z-index:60;
+    opacity:0; pointer-events:none; transition:opacity .2s ease;
+  }
+  .sidebar-overlay.show{ opacity:1; pointer-events:auto; }
+  .sidebar{
+    position:fixed; top:0; left:0; bottom:0; width:250px; max-width:78vw;
+    background:var(--panel); z-index:70; transform:translateX(-100%);
+    transition:transform .25s ease; box-shadow:3px 0 20px rgba(0,0,0,.35);
+    display:flex; flex-direction:column;
+  }
+  .sidebar.show{ transform:translateX(0); }
+  .sidebar-header{
+    padding:22px 18px; display:flex; align-items:center; gap:10px;
+    border-bottom:1px solid rgba(255,255,255,.08); position:relative;
+  }
+  .sidebar-header img{ height:30px; width:auto; display:block; }
+  .sidebar-header span{
+    color:#fff; font-family:'Archivo',sans-serif; font-weight:800; font-size:12.5px;
+    letter-spacing:.02em; line-height:1.25;
+  }
+  .sidebar-nav{ padding:14px 12px; flex:1; overflow-y:auto; }
+  .sidebar a{
+    display:block; padding:12px 12px; border-radius:8px; margin-bottom:4px;
+    font-family:'Inter',sans-serif; font-weight:600; font-size:14.5px;
+    color:rgba(255,255,255,.72); text-decoration:none; border-left:3px solid transparent;
+  }
+  .sidebar a.active{
+    background:rgba(255,255,255,.08); color:#fff; border-left:3px solid var(--brass);
+    font-weight:700;
+  }
+  .sidebar a:not(.active):active{ background:rgba(255,255,255,.05); }
+  .sidebar-close{
+    position:absolute; top:18px; right:14px; width:26px; height:26px;
+    display:flex; align-items:center; justify-content:center; cursor:pointer;
+    color:rgba(255,255,255,.6); font-size:17px;
+  }
+
+  main{ padding:14px 14px 0; max-width:560px; margin:0 auto; }
+
+  .card{
+    background:#fff; border:1px solid var(--line); border-radius:var(--radius);
+    padding:16px; margin-bottom:14px;
+  }
+  .card h2{
+    font-family:'Archivo',sans-serif; font-size:12.5px; font-weight:800;
+    text-transform:uppercase; letter-spacing:.07em; color:var(--ink-soft);
+    margin:0 0 4px; display:flex; align-items:center; justify-content:space-between;
+  }
+  .card .sub-desc{ font-size:11.5px; color:var(--ink-soft); margin:0 0 14px; }
+
+  .field{ margin-bottom:12px; }
+  .field:last-child{ margin-bottom:0; }
+  .field label{
+    display:block; font-size:12px; font-weight:600; color:var(--ink-soft);
+    margin-bottom:5px;
+  }
+  .row2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .row3{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
+
+  input[type=date], input[type=number], input[type=text], select{
+    width:100%; padding:11px 11px; border:1.5px solid var(--line);
+    border-radius:9px; font-size:15px; font-family:'IBM Plex Mono',monospace;
+    background:#FBFBF9; color:var(--ink);
+  }
+  input[type=text]{ font-family:'Inter',sans-serif; font-size:14px; }
+  select{ font-family:'Inter',sans-serif; font-size:13.5px; }
+  input:focus, select:focus{ outline:none; border-color:var(--brass); }
+
+  /* readout */
+  .readout{
+    background:var(--panel); border-radius:10px; padding:12px 14px;
+    display:grid; grid-template-columns:1fr 1fr; gap:8px 14px; margin-top:2px;
+  }
+  .readout .cell{ min-width:0; }
+  .readout .k{
+    font-family:'IBM Plex Mono',monospace; font-size:9.5px; letter-spacing:.08em;
+    text-transform:uppercase; color:#94A3B8; margin-bottom:2px;
+  }
+  .readout .v{
+    font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:17px; color:#8AB4FF;
+  }
+  .readout .v.ok{ color:#7FD79A; }
+  .readout .v.bad{ color:#F09488; }
+  .readout .full{ grid-column:1 / -1; }
+
+  .problem-panel{
+    display:none; margin-top:12px; padding:12px; border-radius:9px;
+    background:#FBEBEC; border:1px solid #F3C1C6;
+  }
+  .problem-panel.show{ display:block; }
+  .problem-panel .warn-label{
+    font-size:11.5px; font-weight:700; color:#B42318; margin-bottom:10px;
+    display:flex; align-items:center; gap:6px;
+  }
+
+  button.add-btn{
+    width:100%; padding:14px; border:none; border-radius:10px;
+    background:var(--brass); color:#fff; font-family:'Archivo',sans-serif;
+    font-weight:800; font-size:14.5px; cursor:pointer; margin-top:14px;
+  }
+  button.add-btn:active{ background:var(--brass-dark); }
+
+  /* entries list (per-cylinder) */
+  .entry-list{ margin-top:4px; }
+  .entry-row{
+    display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--line);
+    font-size:12.5px;
+  }
+  .entry-row:last-child{ border-bottom:none; }
+  .entry-row .no{
+    width:24px; height:24px; border-radius:50%; background:var(--paper-2); color:var(--ink-soft);
+    font-family:'IBM Plex Mono',monospace; font-size:11px; font-weight:700;
+    display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  }
+  .entry-row .info{ flex:1; min-width:0; }
+  .entry-row .info .l1{ font-weight:700; color:var(--ink); }
+  .entry-row .info .l2{ font-size:11px; color:var(--ink-soft); }
+  .entry-row .diff{ font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:13px; white-space:nowrap; }
+  .entry-row .diff.ok{ color:var(--green); }
+  .entry-row .diff.bad{ color:var(--red); }
+  .entry-row .del{
+    width:22px; height:22px; border-radius:50%; background:var(--paper-2); color:var(--ink-soft);
+    display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; font-size:12px;
+  }
+  .empty-hint{ color:var(--ink-soft); font-size:12.5px; text-align:center; padding:16px 0; }
+
+  .total-bar{
+    display:flex; justify-content:space-between; align-items:center;
+    margin-top:10px; padding-top:12px; border-top:2px solid var(--panel);
+    font-family:'IBM Plex Mono',monospace;
+  }
+  .total-bar .lbl{ font-size:12px; color:var(--ink-soft); font-weight:700; }
+  .total-bar .val{ font-size:19px; font-weight:700; color:var(--ink); }
+
+  /* calibration mini table */
+  .calib-block{ margin-bottom:16px; }
+  .calib-block:last-child{ margin-bottom:0; }
+  .calib-block .calib-title{ font-size:12.5px; font-weight:700; color:var(--ink); margin-bottom:8px; }
+  .calib-table{ width:100%; border-collapse:collapse; font-size:11.5px; }
+  .calib-table th{
+    background:var(--paper-2); color:var(--ink-soft); font-weight:700; padding:6px 4px;
+    text-align:center; font-size:10.5px;
+  }
+  .calib-table th:first-child{ text-align:left; }
+  .calib-table td{ padding:5px 4px; border-bottom:1px solid var(--line); }
+  .calib-table td:first-child{ font-weight:600; color:var(--ink-soft); font-size:11px; }
+  .calib-table input{ width:100%; padding:6px 5px; font-size:12px; border-radius:6px; }
+  .calib-table .avg-cell{
+    font-family:'IBM Plex Mono',monospace; font-weight:700; color:var(--brass-dark);
+    text-align:center;
+  }
+
+  /* tolerance reference */
+  .tol-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .tol-item{
+    background:var(--paper); border-radius:8px; padding:9px 11px; font-size:11px; color:var(--ink-soft);
+  }
+  .tol-item b{ color:var(--ink); display:block; font-size:12px; margin-bottom:2px; }
+
+  .refresh{
+    font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--brass-dark);
+    background:none; border:none; cursor:pointer; font-weight:600;
+  }
+
+  .footer-signs{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+
+  .save-bar{
+    position:sticky; bottom:0; background:#fff; border-top:1px solid var(--line);
+    padding:12px 14px; margin-top:6px;
+  }
+  button.save-btn{
+    width:100%; max-width:560px; margin:0 auto; display:block; padding:15px; border:none; border-radius:10px;
+    background:var(--green); color:#fff; font-family:'Archivo',sans-serif;
+    font-weight:800; font-size:15px; cursor:pointer;
+  }
+  button.save-btn:active{ background:#237A3B; }
+
+  .export-pdf-btn{
+    width:100%; max-width:560px; margin:8px auto 0; display:block; padding:12px;
+    border:1.5px solid var(--brass); border-radius:10px; background:#fff; color:var(--brass);
+    font-family:'Archivo',sans-serif; font-weight:800; font-size:13.5px; cursor:pointer;
+  }
+  .export-pdf-btn:active{ background:var(--paper); }
+
+  /* ---------- มุมมองสำหรับพิมพ์ / Export PDF (ซ่อนไว้ปกติ แสดงเฉพาะตอนพิมพ์) ---------- */
+  #printView{ display:none; }
+
+  @media print{
+    html, body{ margin:0 !important; padding:0 !important; width:100% !important; }
+    body > *{ display:none !important; }
+    body > #printView{
+      display:block !important; width:100%; margin:0; padding:0;
+      font-family:'Loma','Sarabun',sans-serif; color:#000; font-size:11px;
+    }
+    @page{ size:A4 landscape; margin:6mm; }
+  }
+
+  .pv-frame{ border:1px solid #000; padding:12px; }
+  .pv-month{ font-size:12px; margin-bottom:6px; text-align:left; }
+  .pv-title-bar{
+    text-align:center; font-weight:bold; font-size:19px; padding:10px;
+    border:1px solid #000; margin-bottom:0;
+  }
+  .pv-table{ width:100%; border-collapse:collapse; table-layout:fixed; margin-bottom:16px; }
+  .pv-table th, .pv-table td{
+    border:1px solid #000; padding:8.8px 4.4px; text-align:center; font-size:11px;
+    word-break:break-word; line-height:1.25; overflow:hidden;
+  }
+  .pv-table th{ font-weight:bold; font-size:10.5px; padding:6.6px 4.4px; }
+  .pv-round1-hdr{ background:#FCE4D6; }
+  .pv-round2-hdr{ background:#E2EFDA; }
+  .pv-colnum-row th{ background:#FFF2CC; font-weight:bold; font-size:11.5px; }
+  .pv-digit-cell{ padding:8.8px 0 !important; }
+  .pv-table td.pv-example-row{ background:#EDEDED; }
+  .pv-result-cell{ text-align:left; padding-left:5px !important; white-space:nowrap; font-size:10.5px; }
+  .pv-checkbox{ font-family:'IBM Plex Mono',monospace; font-size:11px; }
+  .pv-qr-label{ font-size:10px; font-style:italic; color:#555; }
+
+  .pv-bottom-row{ display:flex; gap:12px; align-items:stretch; }
+  .pv-criteria-box{ flex:1.3; border:1px solid #000; font-size:10.3px; }
+  .pv-criteria-box table{ width:100%; border-collapse:collapse; height:100%; }
+  .pv-criteria-box td{ border:1px solid #000; padding:6px 7px; vertical-align:top; font-size:10.3px; line-height:1.5; }
+  .pv-criteria-label{ font-weight:bold; text-align:center; background:#F2F2F2; }
+  .pv-conv-box{ flex:1; }
+  .pv-conv-title{ text-align:center; font-weight:bold; font-size:7.5px; margin-bottom:3.6px; }
+  .pv-conv-table{ width:100%; border-collapse:collapse; }
+  .pv-conv-table th, .pv-conv-table td{ border:1px solid #000; padding:5.4px 4.8px; text-align:center; font-size:6.6px; }
+  .pv-conv-table th{ background:#F2F2F2; font-weight:bold; }
+  .pv-page-break{ page-break-before:always; }
+
+  .badge-draft{
+    display:inline-block; background:#FEF0D5; color:#9A6400; font-size:10px; font-weight:700;
+    padding:2px 8px; border-radius:10px; margin-left:8px; vertical-align:middle;
+  }
+
+  /* บันทึกสำเร็จ modal */
+  .modal-overlay{
+    position:fixed; inset:0; background:rgba(10,14,20,.6); z-index:80;
+    display:none; align-items:flex-end; justify-content:center;
+  }
+  .modal-overlay.show{ display:flex; }
+  .modal-box{
+    background:#fff; border-radius:16px 16px 0 0; padding:22px 18px 24px;
+    width:100%; max-width:560px; max-height:88vh; overflow-y:auto;
+  }
+  .modal-check{
+    width:52px; height:52px; border-radius:50%; background:#DDF3E1;
+    display:flex; align-items:center; justify-content:center; margin:0 auto 14px;
+  }
+  .modal-check svg{ width:26px; height:26px; stroke:var(--green); }
+  .modal-box h3{
+    font-family:'Archivo',sans-serif; font-weight:800; font-size:17px;
+    margin:0 0 4px; color:var(--ink); text-align:center;
+  }
+  .modal-box .modal-sub{
+    text-align:center; font-size:12px; color:var(--ink-soft); margin:0 0 18px;
+  }
+  .modal-summary{
+    background:var(--paper); border-radius:10px; padding:4px 14px; margin-bottom:14px;
+  }
+  .modal-row{ display:flex; justify-content:space-between; font-size:13px; padding:8px 0; border-bottom:1px solid var(--line); }
+  .modal-row:last-child{ border-bottom:none; }
+  .modal-row span:first-child{ color:var(--ink-soft); }
+  .modal-row span:last-child{ font-weight:700; color:var(--ink); }
+  .modal-row.warn span:last-child{ color:var(--red); }
+  .modal-row.ok span:last-child{ color:var(--green); }
+
+  .modal-tanklist{ margin-bottom:14px; }
+  .modal-tanklist .title{ font-size:11.5px; font-weight:700; color:var(--ink-soft); margin-bottom:8px; text-transform:uppercase; letter-spacing:.05em; }
+  .modal-tank-row{
+    display:flex; align-items:center; gap:8px; padding:7px 0; font-size:12px; border-bottom:1px solid var(--line);
+  }
+  .modal-tank-row:last-child{ border-bottom:none; }
+  .modal-tank-row .dot{ width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .modal-tank-row .dot.ok{ background:var(--green); }
+  .modal-tank-row .dot.bad{ background:var(--red); }
+  .modal-tank-row .name{ flex:1; color:var(--ink); }
+  .modal-tank-row .diffval{ font-family:'IBM Plex Mono',monospace; font-weight:700; }
+
+  .modal-doc-no{
+    font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink-soft);
+    text-align:center; margin-bottom:16px;
+  }
+
+  .modal-btn-primary{
+    width:100%; padding:14px; border:none; border-radius:10px;
+    background:var(--brass); color:#fff; font-family:'Archivo',sans-serif;
+    font-weight:800; font-size:14.5px; cursor:pointer; margin-bottom:8px;
+  }
+  .modal-btn-secondary{
+    width:100%; padding:13px; border:1.5px solid var(--line); border-radius:10px;
+    background:#fff; color:var(--ink-soft); font-family:'Inter',sans-serif;
+    font-weight:700; font-size:13.5px; cursor:pointer;
+  }
+
+  /* QR scanner overlay */
+  .qr-overlay{
+    position:fixed; inset:0; background:#000; z-index:90;
+    display:none; flex-direction:column;
+  }
+  .qr-overlay.show{ display:flex; }
+  .qr-header{
+    padding:14px 16px; display:flex; align-items:center; justify-content:space-between;
+    background:#111827; color:#fff;
+  }
+  .qr-header h4{ margin:0; font-family:'Archivo',sans-serif; font-size:14px; font-weight:800; }
+  .qr-close{
+    width:32px; height:32px; border-radius:8px; background:rgba(255,255,255,.1);
+    border:none; color:#fff; font-size:16px; cursor:pointer;
+  }
+  #qrReaderBox{ flex:1; display:flex; align-items:center; justify-content:center; background:#000; }
+  .qr-hint{
+    padding:16px; text-align:center; color:#94A3B8; font-size:12.5px; background:#111827;
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <button class="menu-btn" id="menuBtn" aria-label="เมนู">
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+  </button>
+  <img class="topbar-logo" src="data:image/webp;base64,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" alt="Atlas Energy">
+  <div>
+    <div class="topbar-title">Reject Cylinder</div>
+    <div class="topbar-sub">FM-009 · โรงบรรจุก๊าซกบินทร์บุรี 5</div>
+  </div>
+</div>
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <img src="data:image/webp;base64,UklGRmoSAABXRUJQVlA4TF4SAAAv0cAdEE04juA2bmYB/ID+G7ad+Gggov8TwId9n1tGklsUQ3SHPSmJVNqSSl214U1SogKUUoBu3ixF8dpu/dVgGgXor/TI1C6Mv6tEsifdkAC279sTNz+yYBRJkqL0r2xfp4UZXrQkwEzbNlbRVDvHH9CuYRALJvMnDaKj/xOAkpnjMTM41iPHWhuAnkjNt08AZuJQuAjAShzYEJuR8Kl1HOAOMTOD2CMrqKrI1/7/755E2/a19zJH7/04VjnWfAQ+o+Nh8DRc4iHwCI7FHNssObN09N57ccr/9//ve5jJf461edOLO80cYqbQYiDExNkoBwQsEWa30BPYQlCTKD3ChjF0jIW+S4xGCM0aeguGEpAeiDGWHRh6ImIixA5MNiOGXpRj29qyJ/vGk8q9ywQ8QHQ8uEPHCLxkBO7u7u4VlVvl+mb9P6xItl0rvch5O0DTq2fg1HN2scdfzrAkQJJk2tZcPNu2bdu2bdu2bXw/6/vZtvlt27ycAAHBt0NcaPGGFjgFNoFFoA0RyBDwwt9Q4UOa8EL4YfoKLd5QgpZgLhgIigIphoXHwqxwa4OAM3GFFm8KQoDgegxrCm+Ec0Kr8MmcbRGchXhBDV2b8FugFlBGIEeoFipCzVehtRtS8BWyBSHAKewK28Khj/Bc+JgDAlpgFYQFcUFVMBL4VSA8FcKFabN1QkgWpCAtTxgRFoVf4GJIBRGBO8Af4edNwiPhNRQoTzKC+wsChwKEBiFFwJqpQms39jfWYhNuCxeFGScuhl4wGyRoC6L+qIXPwpowIdxIK1CeSAVvoeBFBe0Fl0TzVGjx5ik0CYw5QrtQVxkXg64j+As2kVgoELwFHQEjDAh9DgUBvubnkv2lP0Gq8BV4S6AUKmsJX3AxFEKYkDoAawp2N7sYKeGPMD5EgYCNNzuX7K+LcEWgwusF4RoIifnCSx4TIoScYVj7KcHWxaCmH1EgfPcyN5fsr7TQEwlZ/yfIC/cQ3oKL0Rea12I8YZLwj2ECu4BUECnoZoX6KhD2nGbmkv1FrIkE8BWq3gJcTGELjAqvhOvCwvP9ACIFOUGvxHNol0cKFCEKNpgYgSj4lEUpWA8S5kB4hr6zjHDJB8OjhW47gF34X0FgUkwX1s1L0mR0wwQlEDqEA0FB4dgjVGDx4PLCMUBwxFvRGuISzEru8QC9KMEXHNcV1wjbo4R9rCmcClsAwkaB8kT1qCJHaDErfg4MbhSGACEWnEnCEVbOCAaEfBfDLxQpOBBrTto8j+EDCTA+8Iiw5AQEZn/hvRUgBCLX+A1RJA41JQ4/jOcIFwAhLxgQxPKEd7QRAqtYIaUdlHUxpg8oENIizIhwc6kFlImFqkCawAPQb/EkyxDoBBVoIfSrhFWh3YTcNBC1sNJP5RAa0fZLQtlAcLQCgj6842Koeivsh03IHrsqXghZpiKmnGaPU4VgdY8ViAHBL0aBEFzZdAg7bVCHCfeL+qgQaoFyP0BXeLLWwwqvwMtfqcumqoxw2Ww496CuKpQQ/7aOcLYB+wEMLhNyrdBH2CT9rzae4VWdBA8DBSdXVIhQBmSV0BszpkTWTmHeQNhdrRQpgmXr0sFCr49C4BUMVUt2Cp5DhDFN6/E1iIpSCcORdYAMTx/FzImCusCQOLWiA4FLMGFXM00FQXPOYCsIVxN1GgErlqvW3o1AE2Yko6MV8IO/XvkvrJqSrldwcrGH+a4XHkLLUjAiivKwnDCBL0mw1xOMhaTYKfGAr/enD8QuF7JmK/Z2ZUUwRLXs0lUYFYI027tCpa40zgBmtnsbT+HbNEHD89pAeFloK+3RffbUMYIMJcd2Xd63HwjkcZO2Y3nJXqjvsQFcp2JZ4fzTlFpuhEcWWOF4PP81QCFHgSCht/BjGo9CKdQLcSzE4k0MmLsHeGFW6gkhdF10qDClAW5NhYWegHD++xgUMuqinpf6XvJLWWsQ3MogTPYY8tRagWTJeFvfuk2GXgNCMYOwoh9qjxloPVupAs5xVLUQ435WyE1l8U2qCjoFJxe9EAUetYcorHpnU5ghSNpByKxXci+UfqJnrspg9PCrDRh+ZAQVyLqVyi97QcP/FwaDqdo2WXBY/lDZmuuwYp9mqo/nob7KQ8F/SMi/g7ag8g7LqEhtCYxqgI4Qk9VBKE3p38J6VzmfmDd6ojfcdtfMtDr5HBkToVo+BQR6IK73zF7r9WonQprwR/Eo3INgms4WL4DKbT3glrpjM4cLkQ1nWcEmdKKeu0KnU3nVFYH8MqDIFR6oaBVh2T74Si1K1SeqgpOL+rOG7w4UnIQvtXOsJci81SpsuiCwpCywV+haGzCjDvr9veAwMKTOTek7BuhscYKQUBzo0JedHaACNANqT5kyJQtYeOX1wrSzKVaM81KNP4H+vJsU/FnAPwZoSlWqoHJmWybcAamFVFVXbS/9ruPd7jQSmqwlZCKU2zIf4+o5QLTgNZ3bTuhtT4XGAD6CdegUYdxdVbYu6n09eH4/ZIAvsGXC9OklgIQrOy56CCtW3oH6GgzmvqLicgAQToTWdWNV7GtmUb+SSAWVKkRRcHKRdkYotPEewrN2NuuMf9nRi0Uw8A60t3hCto7R7ocdUZVUBlPzgh6vfyv7oCxQ9kbUPoIQwgdrJKOe1tMIyQ1VfxfwVykIwIM227Hvq/CzW8KCU3+DU0poVerd9TsfhxFCB31bWaeaf52G0Oh+++j9mY8/6knAjbxWzjJ6PYgVGw+7Q6jZUqV7atPD12/DtYXl/To3Y9jWWcXlKXwlIO4RKLlJZ0gvi4ac8TqAuq6m4ORCD64e7gHRJwWxKrOBoM9I0XR6L/V+ID5394QJQK2qvslXbj10cuz07QyeA1CpAWOfB4QXDg3c9zYpDH2F1yKAhs8V50d57tvCe++NGLZjb10he2rgvRBvvQyhC7Vwd4cxvM9MjlX/6gj+KPlfDeChbSpW9LOk7lmvAjrKgpPLNHlyUYBrb+ZlYQdK3c0UzZIX0QqvvDfWAygp1NwR+lyiYHZUUI6u+6yQHqiZn4xyRvuqSzUpQk/fFIT4hSinhZShbXveeTWlzNMs2v7jbpEIL1t1rahxTMLdsi2hOp9j4aVK/rvVMqn4UoIvHL81zlECUWWfZUniOU8KOl6aIr3g5EJ9nIPlU1D6P1MXV8zyQjdRkMXyThtQx2HpjIsSrl8AVFcI5SYN3R9QUeUuCzjnYUBn4zfCN+lk1IlHLblU+a7it4BTcwQKGhUOAQ0dblLR1WFMKkjPuwZ0Eje7abkGYjrptMDSzJmclcCvVQuqyHmKpUKaTt3jxs6/gvv0LwGd+2xumiCtF9oRdbklllyqJo8DvwacmYCCGwuHhoauwpoK75KGLjweMXRHB7tpBjvG67yBhZcq6WMApwX8VhWoCCs8vkNoBOIPnSr2GDr/HG6diGBM4YLfP6AJdVcsjP+DGP63REzDL+QIzssLRrW1vB3tbp2iwrqBc56QRrcN5nAPauHrPEvO9FXwV4nZlwIUpwj8pMdiFdPzFM9sVAlS2QJWZ/p/d6vREza/US7bcShqGjqwsRXSa1cB5tevUcTdI7zSuQoL913g6dUVwF8Afw9o7lm2Q0XReA3XqRB+l9E5/Yv0rzT5qCesG7lsx8F+N957BPnjwurg+4qEdPeWwhGWzsyOTO+9G+i7HO3Cvifz8lTdnrdO1EgBp8opg9pzjCXneWkALg8AhP9CLJ2dqtwailc3qNgxSWE75W/C0XUcUly240D5XHH3Jql5zqTnOnUT1E8KBvkCR4MI9ubWLt7t+jmvhxwMbFg3vOyQHfUH7VqVfm+K4DrR9pyPkDEx4fnRgT57hbdNuj/X3r3JkqbtYoTn657cLzBB1rQJG0IEmw/3pScWnVBXEGvdKQYEwx/Pej13fpXRS7Y6fQSL1xdM3Pdx4JvFA+9dbx+n6mpT2YVoLPzT3Dee7eM38A/AnwPwHR9GzlKRfUTD5/Eq/BQDhRm9XSgDxkWF9z/UxLb6naDUp1tsEPqyMsfSaMzupGtmCAPV6m3M/6TH+x+1DX5jWUwxYa3VbcJrGx2CMnesTyspfAtqlBc0MVngD+8/a1SesPpp0hO3VdpNXrPwBQ9/OL9HjWxBOPnBikH1Gtfg83H9F45Jntt/QylBpf3tjwouI+rbszOj6m4RBPugXLUEdWMsjP93l8VovwxckcDOekALL1VgUcX+yTofpmpG2fW8Vcpdma/WWLM5IeG1Iz0WB6HdnJ2+c2FsI/91Vfzq2bsc5JHwsPA3pwO+2yZ97jkLg5EVvW84GChIxgDFSyZMu3/BuNsWFfVKu777wdTW0G0k2tbvrPnRC23yZjaJEQLHACytvrkuYPdDPSTIEqHbS/FvCfwhMCMBKFlLxdT9Gup1UtFR+AeEoZ+k8nAn3Sti4gtBHs76jzySYEddAc+eaZE9xgW89sy1oT1GYg8oNXfZCwAvveQeij8DwO7PAPbme4Xk22ttdUKv9kvyTmKz1XXvlELtkHFbYVE8y8l3lKs0N6oNsFjIOyBo4D8AMiIB3hfe6VTDwsrvo/675M0taL9TWcU4RehqnYyOUKA8ISr+T2uefqXeWRstzVE3n576XqkKo7yEpTFBrzsGoy8M1RMcfT6fG5dRYkhU6z1ZgIf/9lYAGdkznnxsQfbggxCRGPNJ8z3Hgz7xji1frBq83v3EQPTXX70eeL0dmbFDcnKdKNtvqND0Bzv8nb75aUDuLaj7lBWIFoxDfWrgfgqZwYrQDkKX6q5DGqYmqUj1wapf3LxHru/XnBcjP2RrekNHa04ehhnxWRubhPt4NJnEwZ01nykZDYeXrq89vS20TRz1ZuhGZi9K9GjdvFv4zqzmi3s2tNUsFit8Anb7hsLR+GlpHLzpTeFzlxmQPXpNzpQFjpbNj0dC28QSt8UuFXzWB4dMbAUwy6lyzm6D8V1zdD7KRL2lyl4FQXYNn4Wq8LPON/kvbt4jxx5A6QWkQTNwniTYvxbQZhfqcddh3N4YdbMom47jo+KqSSsUVY/qBO9wexxYuQzAA6gz7j0CCfEQmgEeHuSl6VRKQj9VGJ6ooHGohsxVKsp4uTmuesn+Mh7RsbhuAOoNnwIHV7dLsXnBANQRfor41Tq2kTflgM0LAqt6uXmlcG3bwVWw8nuRWBqn4PY4FfnoB+4R4uLdOMHHtfLDOgMnb8NiZ+HxHZ+CjwRrlfEDb7hx7q714woR8ORSrDhf1VxwDbGCrXSi2+Z5tSvNiABCbdbQ93/BCvnpzd22j2JmukrFIQAex61gi9Gh5mLLEo7gtu+r+dHDkfg/A9EhkBJizD5wOMrPb7DIOQqDgl2KRbVw65vdjaUp7sBmIKsyukub3lnBn6x8EKgWQZfItAarjPD6hjadqkJINDwTzfR1KW6ea3ph0N4dV437NCqc/wX/vdsPPNfQqQYuJn4zkDfmWwTHKyS2dI6oBEyu9i1C5VxCZvM+wK4iqPrvDJ/vF8glcft2nVnmg23wON4OQCBWKmJC/2Xu/zsG52SbkEfg0eg0YRyg88YixPFvQ75IEAw0/yEmNBXCp5Gs6T2uCPnvnn7/Sj0M+vE3YkaXDIGFTF0F0MJRJKT8TzvcFS2IGByFKRVwK2BQgTwZOJ7QfJhXBER/pR7NV+oCGBTKMKldgckF8oRo8AjAcA9Xc/9KE16pKRKDzzY0K559YPZn9rZ3Ao7iriVwnfqzvKf8h8BgUhKmdeJTIPxvz0pfICLWVaJXnvEmbKf+hsJgtD/mNaUaILxM4zmAwPxt1it2SonLOY+QnPI/KAzmYGoFha1AWkJkaYAubYVeKw1444w31M+/BIfRfk5zg+CfAtgiyUDbqnNlK4QvPGU+oRcdgjrnKQQGHT5OTO7HTQECAgJHavBIvlV4aMx92tw651+E+MWlwZ3yNygM5gzG/H7yIkDPlQXKE0JY7o2ynPe+kRsD4eOexboJOk/ln3s78HOb4C84HRRGq/bGDAvsHwNUv/LEnI7XuaObS3514JQSuPAI+OmtwZx3HSmGb9iJOfa1o40KK1CePP56hZk/2Xlnc/dslfaU/4HzboKLd8FcvAvhtK/IMVy1QShmOSJCA1G2JTf824hXf7UR3b9MV+I/B3FL8EkF/RmfUJz+AeHsl/6eewfuvOtFnP28rKfMhxTjgZnZmGjhbW+FK69ogbmO9Q51JYGYdBTT7Yzb4nSFiI5CI6Z8Uq01/QQGqwQK83HHMe29qwl2Hwgm9S1omJr6vVzMfmmBY7nAWF2g8McjJ2JpbGwo38Y0" alt="Atlas Energy">
+    <span>ATLAS ENERGY<br>LPG Management</span>
+    <div class="sidebar-close" id="sidebarClose">✕</div>
+  </div>
+  <div class="sidebar-nav">
+    <a href="index.html">Gas reconciliation</a>
+    <a href="receiptpage.html">Daily Gas Receipt Report</a>
+    <a href="gatepage.html">Gate to Gate</a>
+    <a href="fm009page.html">ตรวจสอบเครื่องชั่ง (FM-009)</a>
+    <a href="scaletest.html">ทดสอบตราชั่งอัดบรรจุ</a>
+    <a href="rejectcylinder.html" class="active">Reject Cylinder</a>
+    <a href="dashboard.html">Dashboard</a>
+    <a href="todolist_assign.html">มอบหมายงาน</a>
+    <a href="todolist_track.html">ติดตามงาน</a>
+  </div>
+</nav>
+
+<main>
+
+  <!-- ข้อมูลทั่วไป -->
+  <div class="card">
+    <h2>ข้อมูลทั่วไป</h2>
+    <p class="sub-desc">บันทึกถังอัดบรรจุเสร็จที่น้ำหนักไม่ได้มาตรฐาน (REJECT CYLINDER) — เปลี่ยนวันที่เพื่อเรียกดู/แก้ไข/เพิ่มเติมข้อมูลของวันนั้นได้ทันที</p>
+    <div class="field">
+      <label for="checkDate">วันที่</label>
+      <input type="date" id="checkDate">
+    </div>
+    <div id="dateStatus" style="display:none; font-size:12px; padding:8px 10px; border-radius:8px; margin-top:6px;"></div>
+  </div>
+
+  <!-- เพิ่มรายการถัง Reject รอบ 1 -->
+  <div class="card">
+    <h2>เพิ่มรายการถัง <span class="badge-draft">รอบ 1</span></h2>
+    <p class="sub-desc">กรอกข้อมูลถังที่ชั่งได้น้ำหนักไม่ได้มาตรฐาน ระบบจะคำนวณน้ำหนักที่ต้องได้และผลต่างให้อัตโนมัติ</p>
+
+    <div class="field">
+      <label for="tankType">ชนิดถัง (Kg.)</label>
+      <select id="tankType">
+        <option value="">-- เลือกชนิดถัง --</option>
+        <option value="4">4</option>
+        <option value="7">7</option>
+        <option value="12.5">12.5</option>
+        <option value="15">15</option>
+        <option value="15FL">15FL</option>
+        <option value="48">48</option>
+        <option value="48LW">48LW</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label for="serialNoInput">เลข S/N (สแกน QR หรือกรอกเอง)</label>
+      <div style="display:flex; gap:8px;">
+        <input type="text" id="serialNoInput" placeholder="สแกน QR หรือพิมพ์เลข S/N" style="flex:1;">
+        <button type="button" id="scanQrBtn" style="flex:0 0 48px; border:1px solid var(--line); border-radius:8px; background:var(--paper-2); font-size:18px; cursor:pointer;">📷</button>
+      </div>
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <label for="handleWeightInput">น้ำหนักหูถัง (Kg.)</label>
+        <input type="number" step="0.1" inputmode="decimal" id="handleWeightInput" placeholder="0.0">
+      </div>
+      <div class="field">
+        <label>น้ำหนักถังรวมที่ต้องได้ (Kg.)</label>
+        <input type="text" id="requiredWeightDisplay" readonly style="background:var(--paper-2); font-family:'IBM Plex Mono',monospace; font-weight:700;" placeholder="ชนิดถัง+น้ำหนักหูถัง">
+      </div>
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <label for="actualWeight1Input">น้ำหนักถังรวมจริงที่ชั่งได้ (Kg.)</label>
+        <input type="number" step="0.1" inputmode="decimal" id="actualWeight1Input" placeholder="0.0">
+      </div>
+      <div class="field">
+        <label>ผลต่าง (Kg.)</label>
+        <input type="text" id="diff1Display" readonly style="background:var(--paper-2); font-family:'IBM Plex Mono',monospace; font-weight:700;" placeholder="จริง-ต้องได้">
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="signer1Input">ผู้ตรวจสอบ (รอบ 1)</label>
+      <input type="text" id="signer1Input" list="signerSuggestions" placeholder="พิมพ์หรือเลือกชื่อผู้ตรวจสอบ">
+      <datalist id="signerSuggestions"></datalist>
+    </div>
+
+    <button type="button" class="save-btn" id="addEntryBtn" style="max-width:none;">+ เพิ่มรายการ</button>
+  </div>
+
+  <!-- รายการที่บันทึกแล้ว -->
+  <div class="card">
+    <h2>รายการที่บันทึกแล้ว <span class="badge-draft" id="entryCountBadge">0 รายการ</span></h2>
+    <p class="sub-desc">กรอกผลหลังแก้ไข (รอบ 2) ต่อได้ทันทีในแต่ละรายการ เมื่อนำถังกลับไปอัดบรรจุแก้ไขและชั่งใหม่แล้ว</p>
+    <div class="entry-list" id="entryList">
+      <div class="empty-hint">ยังไม่มีรายการ — กรอกด้านบนแล้วกด "เพิ่มรายการ"</div>
+    </div>
+  </div>
+
+  <!-- ตารางค่าเผื่อ (อ้างอิง) -->
+  <div class="card">
+    <h2>ตารางค่าเผื่อขาด–เกิน (อ้างอิง)</h2>
+    <div class="tol-grid">
+      <div class="tol-item"><b>ถัง 4 Kg.</b>เผื่อได้ ± 0.06 Kg.</div>
+      <div class="tol-item"><b>ถัง 7 Kg.</b>เผื่อได้ ± 0.09 Kg.</div>
+      <div class="tol-item"><b>ถัง 12.5 Kg.</b>เผื่อได้ ± 0.13 Kg.</div>
+      <div class="tol-item"><b>ถัง 15 Kg.</b>เผื่อได้ ± 0.15 Kg.</div>
+      <div class="tol-item"><b>ถัง 48 Kg.</b>เผื่อได้ ± 0.48 Kg.</div>
+    </div>
+  </div>
+
+</main>
+
+<div class="qr-overlay" id="qrOverlay">
+  <div class="qr-header">
+    <h4>สแกน QR หมายเลขถัง</h4>
+    <button type="button" class="qr-close" id="qrCloseBtn">✕</button>
+  </div>
+  <div id="qrReaderBox"></div>
+  <div class="qr-hint">เล็งกล้องไปที่ QR code บนถัง ระบบจะตัดเอาแค่เลข S/N ให้อัตโนมัติ</div>
+</div>
+
+<div id="printView"></div>
+
+<div class="save-bar">
+  <button type="button" class="save-btn" id="saveBtn">บันทึกรายการ Reject Cylinder</button>
+  <button type="button" class="export-pdf-btn" id="exportPdfBtn">📄 Export to PDF</button>
+</div>
+
+<div class="modal-overlay" id="saveModal">
+  <div class="modal-box">
+    <div class="modal-check">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+    </div>
+    <h3>บันทึกรายการสำเร็จ</h3>
+    <p class="modal-sub">REJECT CYLINDER · ข้อมูลถังอัดบรรจุเสร็จที่น้ำหนักไม่ได้มาตรฐาน</p>
+    <button type="button" class="modal-btn-primary" id="modalCloseBtn">ปิด</button>
+  </div>
+</div>
+
+<script>
+const menuBtn = document.getElementById('menuBtn');
+const sidebar = document.getElementById('sidebar');
+const sidebarOverlay = document.getElementById('sidebarOverlay');
+const sidebarClose = document.getElementById('sidebarClose');
+function openSidebar(){ sidebar.classList.add('show'); sidebarOverlay.classList.add('show'); }
+function closeSidebar(){ sidebar.classList.remove('show'); sidebarOverlay.classList.remove('show'); }
+menuBtn.addEventListener('click', openSidebar);
+sidebarOverlay.addEventListener('click', closeSidebar);
+sidebarClose.addEventListener('click', closeSidebar);
+
+const GAS_URL = "https://script.google.com/macros/s/AKfycbzFwNJc2PqCmZwNLBRo5guB1KUxsS4GFEttPNuSGMvDISZg6hNAumQaJO-1SneZlOCR6g/exec";
+
+document.getElementById('checkDate').valueAsDate = new Date();
+
+// ---------- ค่าเผื่อขาด-เกิน ตามขนาดถัง (อ้างอิง) ----------
+const TOLERANCE = { '4':0.06, '7':0.09, '12.5':0.13, '15':0.15, '15FL':0.15, '48':0.48, '48LW':0.48 };
+
+// ---------- สแกน QR หมายเลขถัง ----------
+const serialNoInput = document.getElementById('serialNoInput');
+const qrOverlay = document.getElementById('qrOverlay');
+let html5QrCode = null;
+
+// สแกน QR แล้วได้ URL เต็ม (เช่น https://atlas-lms.pt.co.th/gastank-information/CVJ2426451825
+// หรือ http://tha.tl3.org/1860184436) — ตัดเอาแค่ส่วนท้ายสุดหลัง "/" มาใช้เป็นเลข S/N
+// ถ้าค่าที่สแกนได้ไม่ใช่ URL (เผื่อ QR บางถังเข้ารหัสเป็นข้อความธรรมดา) จะคืนค่าเดิมโดยไม่ตัดอะไร
+function extractTankNoFromScan(decodedText){
+  const text = (decodedText || '').trim();
+  if(!text) return text;
+  try{
+    const url = new URL(text);
+    const segments = url.pathname.split('/').filter(s => s.length > 0);
+    if(segments.length > 0) return segments[segments.length - 1];
+    return text;
+  }catch(e){
+    return text; // ไม่ใช่ URL ที่ถูกต้อง ใช้ค่าดิบตามที่สแกนได้
+  }
+}
+
+function startQrScanner(){
+  qrOverlay.classList.add('show');
+  html5QrCode = new Html5Qrcode('qrReaderBox');
+  html5QrCode.start(
+    { facingMode: 'environment' },
+    { fps: 10, qrbox: { width: 240, height: 240 } },
+    (decodedText) => {
+      serialNoInput.value = extractTankNoFromScan(decodedText);
+      stopQrScanner();
+    },
+    () => {} // เฟรมที่สแกนไม่เจอ QR — เพิกเฉย ลองเฟรมถัดไป
+  ).catch(() => {
+    alert('เปิดกล้องไม่สำเร็จ กรุณาอนุญาตให้เว็บไซต์เข้าถึงกล้อง หรือกรอกเลข S/N ด้วยตนเอง');
+    qrOverlay.classList.remove('show');
+  });
+}
+
+function stopQrScanner(){
+  if(html5QrCode){
+    html5QrCode.stop().then(() => html5QrCode.clear()).catch(() => {});
+  }
+  qrOverlay.classList.remove('show');
+}
+
+document.getElementById('scanQrBtn').addEventListener('click', startQrScanner);
+document.getElementById('qrCloseBtn').addEventListener('click', stopQrScanner);
+
+function fmt(n){ return (isFinite(n) ? n : 0).toFixed(2); }
+
+// ---------- ผู้ตรวจสอบ: โหลดรายชื่อที่เคยกรอกไว้สำหรับ autocomplete ----------
+async function loadSignerSuggestions(){
+  try{
+    const res = await fetch(GAS_URL + '?action=rejectSignersGet');
+    const json = await res.json();
+    const signers = (json && json.status === 'ok') ? json.signers : [];
+    document.getElementById('signerSuggestions').innerHTML = signers.map(s => `<option value="${s}">`).join('');
+  }catch(err){ /* เงียบไว้ ไม่ใช่ส่วนสำคัญ */ }
+}
+
+// ---------- คำนวณอัตโนมัติในฟอร์มเพิ่มรายการ ----------
+const tankTypeSel = document.getElementById('tankType');
+const handleWeightInput = document.getElementById('handleWeightInput');
+const requiredWeightDisplay = document.getElementById('requiredWeightDisplay');
+const actualWeight1Input = document.getElementById('actualWeight1Input');
+const diff1Display = document.getElementById('diff1Display');
+
+function nominalWeightForTankType(t){
+  const m = String(t).match(/^[\d.]+/);
+  return m ? parseFloat(m[0]) : 0;
+}
+
+function recalcAddForm(){
+  const nominal = nominalWeightForTankType(tankTypeSel.value);
+  const handle = parseFloat(handleWeightInput.value) || 0;
+  const required = tankTypeSel.value ? (nominal + handle) : null;
+  requiredWeightDisplay.value = required === null ? '' : fmt(required);
+
+  const actual1 = parseFloat(actualWeight1Input.value);
+  if(required !== null && !isNaN(actual1)){
+    const diff = actual1 - required;
+    diff1Display.value = (diff >= 0 ? '+' : '') + fmt(diff);
+    diff1Display.style.color = Math.abs(diff) < 0.01 ? 'inherit' : (diff >= 0 ? 'var(--brass-dark)' : 'var(--red)');
+  } else {
+    diff1Display.value = '';
+  }
+}
+tankTypeSel.addEventListener('change', recalcAddForm);
+handleWeightInput.addEventListener('input', recalcAddForm);
+actualWeight1Input.addEventListener('input', recalcAddForm);
+
+// ---------- รายการ ----------
+let entries = [];
+let nextEntryId = 1;
+const entryList = document.getElementById('entryList');
+const entryCountBadge = document.getElementById('entryCountBadge');
+
+document.getElementById('addEntryBtn').addEventListener('click', () => {
+  const tankType = tankTypeSel.value;
+  const serialNo = serialNoInput.value.trim();
+  const handleWeight = parseFloat(handleWeightInput.value);
+  const actualWeight1 = parseFloat(actualWeight1Input.value);
+  const signer1 = document.getElementById('signer1Input').value.trim();
+
+  if(!tankType){ alert('กรุณาเลือกชนิดถัง'); return; }
+  if(!serialNo){ alert('กรุณาสแกนหรือกรอกเลข S/N'); return; }
+  if(isNaN(handleWeight)){ alert('กรุณากรอกน้ำหนักหูถัง'); return; }
+  if(isNaN(actualWeight1)){ alert('กรุณากรอกน้ำหนักถังรวมจริงที่ชั่งได้'); return; }
+
+  const required = nominalWeightForTankType(tankType) + handleWeight;
+  const diff1 = actualWeight1 - required;
+
+  entries.push({
+    id: nextEntryId++, tankType, serialNo, handleWeight, requiredWeight: required,
+    actualWeight1, diff1, signer1,
+    actualWeight2: '', diff2: '', result: '', signer2: '', remark: ''
+  });
+
+  // เคลียร์ฟอร์มสำหรับรายการถัดไป (คงชื่อผู้ตรวจสอบไว้ เพราะมักตรวจต่อเนื่องคนเดิม)
+  tankTypeSel.value = '';
+  serialNoInput.value = '';
+  handleWeightInput.value = '';
+  actualWeight1Input.value = '';
+  requiredWeightDisplay.value = '';
+  diff1Display.value = '';
+
+  alert('เพิ่มรายการแล้ว ✓');
+  renderEntries();
+});
+
+function renderEntries(){
+  entryCountBadge.textContent = entries.length + ' รายการ';
+  if(entries.length === 0){
+    entryList.innerHTML = '<div class="empty-hint">ยังไม่มีรายการ — กรอกด้านบนแล้วกด "เพิ่มรายการ"</div>';
+    return;
+  }
+
+  entryList.innerHTML = entries.map((e, idx) => `
+    <div class="entry-row" style="flex-wrap:wrap; align-items:flex-start;">
+      <div class="info" style="flex-basis:100%;">
+        <div class="l1">#${idx + 1} · ถัง ${e.tankType} Kg. · S/N ${e.serialNo}</div>
+        <div class="l2">หูถัง ${fmt(e.handleWeight)} Kg. · ต้องได้ ${fmt(e.requiredWeight)} Kg. · จริงรอบ1 ${fmt(e.actualWeight1)} Kg. ·
+          ผลต่าง <span style="color:${Math.abs(e.diff1) < 0.01 ? 'inherit' : (e.diff1 >= 0 ? 'var(--brass-dark)' : 'var(--red)')}; font-weight:700;">${e.diff1 >= 0 ? '+' : ''}${fmt(e.diff1)}</span> Kg.
+          ${e.signer1 ? ' · ผู้ตรวจ: ' + e.signer1 : ''}
+        </div>
+      </div>
+      <div style="flex-basis:100%; display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px; padding-top:8px; border-top:1px dashed var(--line);">
+        <div class="field" style="margin:0;">
+          <label style="font-size:10.5px;">น้ำหนักหลังแก้ไข (Kg.)</label>
+          <input type="number" step="0.1" inputmode="decimal" class="entry-actual2" data-id="${e.id}" value="${e.actualWeight2}" placeholder="0.0">
+        </div>
+        <div class="field" style="margin:0;">
+          <label style="font-size:10.5px;">ผลต่างหลังแก้ไข (Kg.)</label>
+          <input type="text" class="entry-diff2" data-id="${e.id}" value="${e.diff2 !== '' ? ((e.diff2 >= 0 ? '+' : '') + fmt(e.diff2)) : ''}" readonly style="background:var(--paper-2); font-family:'IBM Plex Mono',monospace; font-weight:700;">
+        </div>
+        <div class="field" style="margin:0;">
+          <label style="font-size:10.5px;">ผู้ตรวจสอบ (หลังแก้ไข)</label>
+          <input type="text" class="entry-signer2" data-id="${e.id}" list="signerSuggestions" value="${e.signer2}" placeholder="ชื่อผู้ตรวจสอบ">
+        </div>
+        <div class="field" style="margin:0;">
+          <label style="font-size:10.5px;">ผลการตรวจสอบ</label>
+          <select class="entry-result" data-id="${e.id}">
+            <option value="" ${e.result === '' ? 'selected' : ''}>-- ยังไม่ระบุ --</option>
+            <option value="ผ่าน" ${e.result === 'ผ่าน' ? 'selected' : ''}>✓ ผ่าน</option>
+            <option value="ไม่ผ่าน" ${e.result === 'ไม่ผ่าน' ? 'selected' : ''}>✕ ไม่ผ่าน</option>
+          </select>
+        </div>
+        <div class="field" style="margin:0; grid-column:1 / -1;">
+          <label style="font-size:10.5px;">หมายเหตุ</label>
+          <input type="text" class="entry-remark" data-id="${e.id}" value="${e.remark}" placeholder="หมายเหตุ (ถ้ามี)">
+        </div>
+      </div>
+      <div style="flex-basis:100%; text-align:right; margin-top:6px;">
+        <button type="button" class="del" data-idx="${idx}" style="background:none; border:none; color:var(--red); font-size:12px; cursor:pointer; font-weight:700;">🗑 ลบรายการนี้</button>
+      </div>
+    </div>
+  `).join('');
+
+  entryList.querySelectorAll('.entry-actual2').forEach(inp => {
+    inp.addEventListener('input', () => {
+      const id = parseInt(inp.dataset.id, 10);
+      const entry = entries.find(x => x.id === id);
+      const val = parseFloat(inp.value);
+      entry.actualWeight2 = inp.value === '' ? '' : val;
+      entry.diff2 = (inp.value === '' || isNaN(val)) ? '' : (val - entry.requiredWeight);
+      const diffCell = entryList.querySelector(`.entry-diff2[data-id="${id}"]`);
+      diffCell.value = entry.diff2 === '' ? '' : ((entry.diff2 >= 0 ? '+' : '') + fmt(entry.diff2));
+    });
+  });
+  entryList.querySelectorAll('.entry-signer2').forEach(inp => {
+    inp.addEventListener('input', () => {
+      const id = parseInt(inp.dataset.id, 10);
+      entries.find(x => x.id === id).signer2 = inp.value;
+    });
+  });
+  entryList.querySelectorAll('.entry-result').forEach(sel => {
+    sel.addEventListener('change', () => {
+      const id = parseInt(sel.dataset.id, 10);
+      entries.find(x => x.id === id).result = sel.value;
+    });
+  });
+  entryList.querySelectorAll('.entry-remark').forEach(inp => {
+    inp.addEventListener('input', () => {
+      const id = parseInt(inp.dataset.id, 10);
+      entries.find(x => x.id === id).remark = inp.value;
+    });
+  });
+  entryList.querySelectorAll('.del').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.dataset.idx, 10);
+      if(confirm('ลบรายการนี้ใช่ไหม?')){
+        entries.splice(idx, 1);
+        renderEntries();
+      }
+    });
+  });
+}
+
+// ---------- โหลด/บันทึกตามวันที่ ----------
+const checkDate = document.getElementById('checkDate');
+const dateStatusEl = document.getElementById('dateStatus');
+
+async function loadDataForDate(){
+  const dateVal = checkDate.value;
+  if(!dateVal) return;
+  dateStatusEl.style.display = 'block';
+  dateStatusEl.style.background = 'var(--paper-2)';
+  dateStatusEl.style.color = 'var(--ink-soft)';
+  dateStatusEl.textContent = 'กำลังโหลดข้อมูล...';
+  try{
+    const res = await fetch(GAS_URL + '?action=rejectGet&date=' + encodeURIComponent(dateVal));
+    const json = await res.json();
+    entries = [];
+    nextEntryId = 1;
+    if(json && json.status === 'ok' && json.found){
+      json.items.forEach(it => {
+        entries.push({
+          id: nextEntryId++,
+          tankType: it.tankType, serialNo: it.serialNo,
+          handleWeight: parseFloat(it.handleWeight) || 0, requiredWeight: parseFloat(it.requiredWeight) || 0,
+          actualWeight1: parseFloat(it.actualWeight1) || 0, diff1: parseFloat(it.diff1) || 0, signer1: it.signer1 || '',
+          actualWeight2: it.actualWeight2 === '' ? '' : parseFloat(it.actualWeight2),
+          diff2: it.diff2 === '' ? '' : parseFloat(it.diff2),
+          result: it.result || '', signer2: it.signer2 || '', remark: it.remark || ''
+        });
+      });
+      dateStatusEl.style.background = '#E4ECFB';
+      dateStatusEl.style.color = 'var(--brass-dark)';
+      dateStatusEl.textContent = `พบข้อมูลของวันที่ ${dateVal} จำนวน ${entries.length} รายการ (แก้ไข/เพิ่มเติมได้)`;
+    } else {
+      dateStatusEl.style.background = 'var(--paper-2)';
+      dateStatusEl.style.color = 'var(--green)';
+      dateStatusEl.textContent = `ยังไม่มีข้อมูลของวันที่ ${dateVal} — เริ่มบันทึกรายการแรกได้เลย`;
+    }
+    renderEntries();
+  }catch(err){
+    dateStatusEl.style.background = '#FBEBEC';
+    dateStatusEl.style.color = 'var(--red)';
+    dateStatusEl.textContent = 'โหลดข้อมูลไม่สำเร็จ กรุณาลองใหม่';
+  }
+}
+checkDate.addEventListener('change', loadDataForDate);
+loadDataForDate();
+loadSignerSuggestions();
+
+// ---------- บันทึก ----------
+document.getElementById('saveBtn').addEventListener('click', async () => {
+  const dateVal = checkDate.value;
+  if(!dateVal){ alert('กรุณาเลือกวันที่'); return; }
+  if(entries.length === 0){ alert('ยังไม่มีรายการให้บันทึก'); return; }
+
+  const saveBtn = document.getElementById('saveBtn');
+  saveBtn.disabled = true;
+  saveBtn.textContent = 'กำลังบันทึก...';
+  try{
+    const res = await fetch(GAS_URL, {
+      method: 'POST',
+      body: JSON.stringify({
+        form: 'rejectCylinder',
+        date: dateVal,
+        items: entries.map(e => ({
+          tankType: e.tankType, serialNo: e.serialNo,
+          handleWeight: e.handleWeight, requiredWeight: e.requiredWeight,
+          actualWeight1: e.actualWeight1, diff1: e.diff1, signer1: e.signer1,
+          actualWeight2: e.actualWeight2, diff2: e.diff2,
+          result: e.result, signer2: e.signer2, remark: e.remark
+        }))
+      })
+    });
+    const json = await res.json();
+    if(json && json.status === 'ok'){
+      document.getElementById('saveModal').classList.add('show');
+      loadSignerSuggestions();
+    } else {
+      alert('บันทึกไม่สำเร็จ: ' + (json && json.message ? json.message : 'ไม่ทราบสาเหตุ'));
+    }
+  }catch(err){
+    alert('เชื่อมต่อไม่สำเร็จ กรุณาลองใหม่');
+  }finally{
+    saveBtn.disabled = false;
+    saveBtn.textContent = 'บันทึกรายการ Reject Cylinder';
+  }
+});
+
+document.getElementById('modalCloseBtn').addEventListener('click', () => {
+  document.getElementById('saveModal').classList.remove('show');
+});
+
+// ---------- Export to PDF (ตามแบบฟอร์ม FM-QP-003) ----------
+document.getElementById('exportPdfBtn').addEventListener('click', () => {
+  const dateVal = checkDate.value || '-';
+  if(entries.length === 0){
+    alert('ยังไม่มีรายการให้ Export');
+    return;
+  }
+
+  const THAI_MONTHS = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+  let monthLabel = '';
+  if(dateVal !== '-'){
+    const [y, m] = dateVal.split('-').map(Number);
+    monthLabel = THAI_MONTHS[m - 1] + ' ' + (y + 543); // ปี พ.ศ.
+  }
+
+  // แปลงเลข S/N เป็นช่องตัวเลขทีละหลัก 12 ช่อง เหมือนแบบฟอร์มต้นฉบับ
+  function serialDigitCells(sn){
+    const chars = String(sn || '').split('').slice(0, 12);
+    while(chars.length < 12) chars.push('');
+    return chars.map(c => `<td class="pv-digit-cell">${c}</td>`).join('');
+  }
+  function resultCheckbox(result){
+    const passBox = result === 'ผ่าน' ? '☑' : '☐';
+    const failBox = result === 'ไม่ผ่าน' ? '☑' : '☐';
+    return `<span class="pv-checkbox">${passBox} ผ่าน&nbsp;&nbsp;${failBox} ไม่ผ่าน</span>`;
+  }
+
+  const rowHtml = (e, idx) => `
+    <tr>
+      <td>${dateVal}</td>
+      <td>${idx + 1}</td>
+      <td>${e.tankType}</td>
+      ${serialDigitCells(e.serialNo)}
+      <td>${fmt(e.handleWeight)}</td>
+      <td>${fmt(e.requiredWeight)}</td>
+      <td>${fmt(e.actualWeight1)}</td>
+      <td>${e.diff1 >= 0 ? '+' : ''}${fmt(e.diff1)}</td>
+      <td>${e.signer1 || ''}</td>
+      <td>${e.actualWeight2 === '' ? '' : fmt(e.actualWeight2)}</td>
+      <td>${e.diff2 === '' ? '' : ((e.diff2 >= 0 ? '+' : '') + fmt(e.diff2))}</td>
+      <td class="pv-result-cell">${resultCheckbox(e.result)}</td>
+      <td>${e.signer2 || ''}</td>
+      <td>${e.remark || ''}</td>
+    </tr>
+  `;
+  const blankRowHtml = (rowNo) =>
+    `<tr><td></td><td>${rowNo}</td><td></td>${'<td class="pv-digit-cell"></td>'.repeat(12)}<td></td><td></td><td></td><td></td><td></td><td></td><td></td><td class="pv-result-cell">${resultCheckbox('')}</td><td></td><td></td></tr>`;
+
+  // แบ่งรายการเป็นหน้าละ 10 แถว เหมือนแบบฟอร์มต้นฉบับ — เกิน 10 รายการ ขึ้นหน้าใหม่ต่อเนื่องกันอัตโนมัติ
+  const ROWS_PER_PAGE = 10;
+  const pageCount = Math.max(1, Math.ceil(entries.length / ROWS_PER_PAGE));
+
+  function buildPageHtml(pageEntries, startIdx, pageIdx){
+    const rowsHtml = pageEntries.map((e, i) => rowHtml(e, startIdx + i)).join('');
+    let blankRows = '';
+    for(let i = pageEntries.length; i < ROWS_PER_PAGE; i++){
+      blankRows += blankRowHtml(startIdx + i + 1);
+    }
+    return `
+    <div class="pv-frame${pageIdx > 0 ? ' pv-page-break' : ''}">
+      <div class="pv-month">Month : ${monthLabel}${pageCount > 1 ? ` (หน้า ${pageIdx + 1}/${pageCount})` : ''}</div>
+      <div class="pv-title-bar">ข้อมูลถังอัดบรรจุเสร็จที่น้ำหนักไม่ได้มาตรฐาน (REJECT CYLINDER)</div>
+      <table class="pv-table">
+        <colgroup>
+          <col style="width:5.5%"> <!-- วันที่ -->
+          <col style="width:4.5%"> <!-- ลำดับ -->
+          <col style="width:3.5%"> <!-- ชนิดถัง -->
+          <col style="width:1.7%"><col style="width:1.7%"><col style="width:1.7%"><col style="width:1.7%">
+          <col style="width:1.7%"><col style="width:1.7%"><col style="width:1.7%"><col style="width:1.7%">
+          <col style="width:1.7%"><col style="width:1.7%"><col style="width:1.7%"><col style="width:1.7%"> <!-- 12 digit cells -->
+          <col style="width:5%">   <!-- น้ำหนักหูถัง -->
+          <col style="width:5.5%"> <!-- ต้องได้ -->
+          <col style="width:5.5%"> <!-- จริงรอบ1 -->
+          <col style="width:5%">   <!-- ผลต่างรอบ1 -->
+          <col style="width:8%">   <!-- signer1 -->
+          <col style="width:5.5%"> <!-- จริงรอบ2 -->
+          <col style="width:5%">   <!-- ผลต่างรอบ2 -->
+          <col style="width:11%">  <!-- ผลการตรวจสอบ -->
+          <col style="width:8%">   <!-- signer2 -->
+          <col style="width:9%">  <!-- หมายเหตุ -->
+        </colgroup>
+        <tr>
+          <th rowspan="3">วันที่</th>
+          <th rowspan="3">ลำดับ</th>
+          <th colspan="18" class="pv-round1-hdr">รอบ 1</th>
+          <th colspan="4" class="pv-round2-hdr">รอบ 2</th>
+          <th rowspan="3">หมายเหตุ</th>
+        </tr>
+        <tr class="pv-colnum-row">
+          <th>1</th>
+          <th colspan="12">เลข S/N (12 หลัก)</th>
+          <th>2</th><th>3<br>(1 + 2)</th><th>4</th><th>5<br>(4 - 3)</th>
+          <th rowspan="2">ลงชื่อพนักงาน<br>ผู้ตรวจสอบ</th>
+          <th>6</th><th>7<br>(6 - 3)</th>
+          <th rowspan="2">ผลการตรวจสอบ<br><span style="font-weight:normal; font-size:7.5px;">ถ้าผลไม่ผ่าน ต้องหยุด<br>และเรียกหัวหน้างานแก้ไขทันที</span></th>
+          <th rowspan="2">ลงชื่อพนักงาน<br>ผู้ตรวจสอบ</th>
+        </tr>
+        <tr class="pv-round1-hdr">
+          <th style="background:#FCE4D6;">ชนิดถัง</th>
+          <th colspan="12" class="pv-qr-label" style="background:#FCE4D6;">QR Code</th>
+          <th style="background:#FCE4D6;">น้ำหนักหูถัง<br>(KG)</th>
+          <th style="background:#FCE4D6;">น้ำหนักถังรวม<br>ที่ต้องได้ (KG)</th>
+          <th style="background:#FCE4D6;">น้ำหนักถังรวม<br>จริงที่ชั่งได้ (KG)</th>
+          <th style="background:#FCE4D6;">ผลต่าง (+/-)</th>
+          <th style="background:#E2EFDA;">น้ำหนักถังรวม<br>จริงที่ชั่งได้ (KG)</th>
+          <th style="background:#E2EFDA;">ผลต่าง (+/-)</th>
+        </tr>
+        ${rowsHtml}
+        ${blankRows}
+      </table>
+
+      <div class="pv-bottom-row">
+        <div class="pv-criteria-box">
+          <table>
+            <tr>
+              <td class="pv-criteria-label" style="width:90px;">เกณฑ์การยอมรับ<br>อ้างอิง<br>กระบวนการอัดบรรจุถังก๊าซหุงต้ม<br>189000028-QP-003 (Rev.006)</td>
+              <td>
+                น้ำหนักที่อัดบรรจุ สามารถขาดเกินได้ (ผลต่าง +/-) ตามขนาด ดังนี้<br>
+                a) ถัง 4 กก. = +/- ไม่เกิน 60 กรัม &nbsp;&nbsp; d) ถัง 15 กก. = +/- ไม่เกิน 150 กรัม<br>
+                b) ถัง 7 กก. = +/- ไม่เกิน 70 กรัม &nbsp;&nbsp; e) ถัง 48 กก. = +/- ไม่เกิน 480 กรัม<br>
+                c) ถัง 12.5 กก. = +/- ไม่เกิน 130 กรัม
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="pv-conv-box">
+          <div class="pv-conv-title">ตารางแปลงหน่วย กิโลกรัม เป็น กรัม</div>
+          <table class="pv-conv-table">
+            <tr><th>กิโลกรัม (กก.)</th><th>กรัม (ก.)</th><th>กิโลกรัม (กก.)</th><th>กรัม (ก.)</th><th>กิโลกรัม (กก.)</th><th>กรัม (ก.)</th></tr>
+            <tr><td>0.06</td><td>60</td><td>0.15</td><td>150</td><td>1</td><td>1,000</td></tr>
+            <tr><td>0.07</td><td>70</td><td>0.48</td><td>480</td><td>10</td><td>10,000</td></tr>
+            <tr><td>0.13</td><td>130</td><td></td><td></td><td></td><td></td></tr>
+          </table>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  let pagesHtml = '';
+  for(let p = 0; p < pageCount; p++){
+    const startIdx = p * ROWS_PER_PAGE;
+    const pageEntries = entries.slice(startIdx, startIdx + ROWS_PER_PAGE);
+    pagesHtml += buildPageHtml(pageEntries, startIdx, p);
+  }
+
+  const printHtml = `<div id="printView">${pagesHtml}</div>`;
+  document.getElementById('printView').outerHTML = printHtml;
+  window.print();
+  location.reload();
+});
+</script>
+
+</body>
+</html>
